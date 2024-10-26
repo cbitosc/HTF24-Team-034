@@ -1,8 +1,7 @@
-// firebase.js
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore } from "firebase/firestore"; // Add this import
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcA9Xw2jSEDlBw-HnVdegz1xmQ_acdE4I",
@@ -18,6 +17,28 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const analytics = getAnalytics(app);
-const db = getFirestore(app); // Initialize Firestore
+const db = getFirestore(app);
 
-export { app, auth, analytics, db }; // Add db to exports
+// Enable offline persistence
+enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code === 'failed-precondition') {
+    // Multiple tabs open, persistence can only be enabled in one tab at a time.
+    console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+  } else if (err.code === 'unimplemented') {
+    // The current browser doesn't support persistence
+    console.warn('The current browser doesn\'t support persistence');
+  }
+});
+
+// Error handling for auth state changes
+auth.onAuthStateChanged((user) => {
+  if (user) {
+    console.log('User is signed in');
+  } else {
+    console.log('User is signed out');
+  }
+}, (error) => {
+  console.error('Auth state change error:', error);
+});
+
+export { app, auth, analytics, db };
