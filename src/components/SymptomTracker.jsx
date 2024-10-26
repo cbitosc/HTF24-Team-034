@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, subDays } from 'date-fns';
 import { db, auth } from '../firebase';
 import { 
   collection, 
@@ -11,7 +11,8 @@ import {
   orderBy,
   serverTimestamp,
   doc,
-  deleteDoc
+  deleteDoc,
+  Timestamp 
 } from 'firebase/firestore';
 import {
   Container,
@@ -32,6 +33,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tab,
+  Tabs,
 } from '@mui/material';
 import {
   AddCircleOutline,
@@ -46,7 +49,8 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
+  Legend
 } from 'recharts';
 
 const DEFAULT_SYMPTOMS = [
@@ -72,11 +76,31 @@ const DEFAULT_MOODS = [
   "Stressed"
 ];
 
-// Custom theme colors
 const themeColors = {
-  primary: '#ec4899', // Pink
-  secondary: '#fde7f3', // Light pink
-  hover: '#be185d', // Darker pink
+  primary: '#ec4899',
+  secondary: '#fde7f3',
+  hover: '#be185d',
+};
+
+// Generate dummy data for the past 3 months with daily entries
+const generateDummyData = () => {
+  const today = new Date(2024, 9, 27); // October 27, 2024
+  const threeMonthsAgo = subMonths(today, 3);
+  const daysInterval = eachDayOfInterval({ start: threeMonthsAgo, end: subDays(today, 1) });
+  
+  return daysInterval.map(date => ({
+    id: `dummy-${format(date, 'yyyy-MM-dd')}`,
+    date: format(date, 'MMM dd'),
+    fullDate: date,
+    timestamp: Timestamp.fromDate(date),
+    symptoms: Array(Math.floor(Math.random() * 4) + 1).fill(null).map(() => ({
+      name: DEFAULT_SYMPTOMS[Math.floor(Math.random() * DEFAULT_SYMPTOMS.length)],
+      intensity: Math.floor(Math.random() * 5) + 1
+    })),
+    mood: DEFAULT_MOODS[Math.floor(Math.random() * DEFAULT_MOODS.length)],
+    notes: `Sample entry for ${format(date, 'MMM dd')}`,
+    userId: auth.currentUser?.uid || 'dummy-user'
+  }));
 };
 
 const SymptomTracker = () => {
@@ -96,6 +120,8 @@ const SymptomTracker = () => {
   const [customMoodDialog, setCustomMoodDialog] = useState(false);
   const [newCustomSymptom, setNewCustomSymptom] = useState("");
   const [newCustomMood, setNewCustomMood] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(0);
+  const [monthlyData, setMonthlyData] = useState([]);
 
   useEffect(() => {
     fetchSymptomHistory();
@@ -109,26 +135,38 @@ const SymptomTracker = () => {
         return;
       }
 
-      const userId = auth.currentUser.uid;
-      const q = query(
-        collection(db, 'symptomLogs'),
-        where('userId', '==', userId),
-        orderBy('timestamp', 'desc')
-      );
+      // Generate dummy data for past 3 months
+      const dummyData = generateDummyData();
+      
+      // Group data by month
+      const groupedData = dummyData.reduce((acc, entry) => {
+        const monthKey = format(entry.fullDate, 'yyyy-MM');
+        if (!acc[monthKey]) {
+          acc[monthKey] = [];
+        }
+        acc[monthKey].push(entry);
+        return acc;
+      }, {});
 
-      const querySnapshot = await getDocs(q);
-      const data = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().timestamp ? format(doc.data().timestamp.toDate(), 'MMM dd') : 'No date'
-      }));
+      // Sort months and convert to array format
+      const monthsArray = Object.entries(groupedData)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([month, data]) => ({
+          month,
+          data: data.sort((a, b) => b.timestamp.toDate() - a.timestamp.toDate())
+        }));
 
-      setHistoricalData(data);
+      setMonthlyData(monthsArray);
+      setHistoricalData(dummyData);
       setIsLoading(false);
     } catch (error) {
       console.error('Error fetching symptom history:', error);
       setIsLoading(false);
     }
+  };
+
+  const handleMonthChange = (event, newValue) => {
+    setSelectedMonth(newValue);
   };
 
   const handleAddSymptom = () => {
@@ -174,8 +212,11 @@ const SymptomTracker = () => {
     if (!entryToDelete) return;
 
     try {
-      const docRef = doc(db, 'symptomLogs', entryToDelete.id);
-      await deleteDoc(docRef);
+      // Only attempt to delete from Firestore if it's not a dummy entry
+      if (!entryToDelete.id.startsWith('dummy-')) {
+        const docRef = doc(db, 'symptomLogs', entryToDelete.id);
+        await deleteDoc(docRef);
+      }
       
       setHistoricalData(prevData => 
         prevData.filter(entry => entry.id !== entryToDelete.id)
@@ -183,6 +224,7 @@ const SymptomTracker = () => {
       
       setDeleteDialogOpen(false);
       setEntryToDelete(null);
+      await fetchSymptomHistory();
     } catch (error) {
       console.error('Error deleting entry:', error);
     }
@@ -196,14 +238,18 @@ const SymptomTracker = () => {
 
     try {
       const userId = auth.currentUser.uid;
-      await addDoc(collection(db, 'symptomLogs'), {
+      const newEntry = {
         userId,
         symptoms,
         mood,
         notes,
-        timestamp: serverTimestamp()
-      });
+        timestamp: serverTimestamp(),
+        date: format(new Date(), 'MMM dd'),
+        fullDate: new Date()
+      };
 
+      const docRef = await addDoc(collection(db, 'symptomLogs'), newEntry);
+      
       setSymptoms([]);
       setMood("");
       setNotes("");
@@ -214,8 +260,26 @@ const SymptomTracker = () => {
     }
   };
 
-  const getChartData = () => {
-    return historicalData.slice(0, 7).reverse();
+  const getSymptomStats = (data) => {
+    const symptomCounts = {};
+    const intensitySums = {};
+    
+    data.forEach(entry => {
+      entry.symptoms.forEach(symptom => {
+        if (!symptomCounts[symptom.name]) {
+          symptomCounts[symptom.name] = 0;
+          intensitySums[symptom.name] = 0;
+        }
+        symptomCounts[symptom.name]++;
+        intensitySums[symptom.name] += symptom.intensity;
+      });
+    });
+
+    return Object.keys(symptomCounts).map(name => ({
+      name,
+      count: symptomCounts[name],
+      avgIntensity: (intensitySums[name] / symptomCounts[name]).toFixed(1)
+    }));
   };
 
   const buttonStyle = {
@@ -245,7 +309,8 @@ const SymptomTracker = () => {
 
   return (
     <Container maxWidth="md" sx={{ my: 4 }}>
-      <Paper sx={{ p: 3 }}>
+      {/* Entry Form */}
+      <Paper sx={{ p: 3, mb: 4 }}>
         <Typography variant="h6" gutterBottom>Track Today&apos;s Symptoms</Typography>
         
         {/* Symptom Selection Row */}
@@ -278,8 +343,6 @@ const SymptomTracker = () => {
             </MuiButton>
           </Grid>
         </Grid>
-
-        
 
         {/* Mood Selection Row */}
         <Grid container spacing={2} alignItems="center" mb={3}>
@@ -355,15 +418,11 @@ const SymptomTracker = () => {
               key={symptom.name}
               label={`${symptom.name} (${symptom.intensity}/5)`}
               onDelete={() => handleRemoveSymptom(symptom.name)}
-              deleteIcon={<DeleteOutline />}
               sx={{ 
                 mr: 1, 
                 mb: 1,
                 backgroundColor: themeColors.secondary,
-                color: themeColors.primary,
-                '& .MuiChip-deleteIcon': {
-                  color: themeColors.primary,
-                }
+                color: themeColors.primary
               }}
             />
           ))}
@@ -393,32 +452,121 @@ const SymptomTracker = () => {
         </MuiButton>
       </Paper>
 
-      {/* Historical Data Visualization */}
-      <Paper sx={{ p: 3, mt: 4 }}>
-        <Typography variant="h6" gutterBottom>Symptom History</Typography>
-        <Box sx={{ height: 300 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={getChartData()}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Line 
-                type="monotone" 
-                dataKey="symptoms.length" 
-                stroke={themeColors.primary}
-                name="Number of Symptoms"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </Box>
+      {/* Monthly Data Visualization */}
+      <Paper sx={{ p: 3, mb: 4 }}>
+        <Typography variant="h6" gutterBottom>Monthly Trends</Typography>
+        
+        <Tabs
+          value={selectedMonth}
+          onChange={handleMonthChange}
+          variant="fullWidth"
+          sx={{ mb: 3 }}
+        >
+          {monthlyData.map((month, index) => (
+            <Tab 
+              key={month.month} 
+              label={format(new Date(month.month), 'MMMM yyyy')}
+              sx={{
+                color: selectedMonth === index ? themeColors.primary : 'inherit',
+              }}
+            />
+          ))}
+        </Tabs>
+
+        {monthlyData.length > 0 && (
+          <>
+            {/* Daily Symptoms Graph */}
+            <Box sx={{ height: 300, mb: 4 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyData[selectedMonth].data}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="date"
+                    interval={2}
+                    angle={-45}
+                    textAnchor="end"
+                    height={50}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey={d => d.symptoms.length}
+                    stroke={themeColors.primary}
+                    name="Number of Symptoms"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey={d => Math.round(d.symptoms.reduce((acc, s) => acc + s.intensity, 0) / d.symptoms.length)}
+                    stroke={themeColors.hover}
+                    name="Average Intensity"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Box>
+
+            {/* Monthly Statistics */}
+            <Typography variant="h6" gutterBottom>Monthly Summary</Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 2, backgroundColor: themeColors.secondary }}>
+                  <Typography variant="subtitle1" gutterBottom>Most Common Symptoms</Typography>
+                  {getSymptomStats(monthlyData[selectedMonth].data)
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 5)
+                    .map(stat => (
+                      <Box 
+                        key={stat.name} 
+                        sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between',
+                          mb: 1 
+                        }}
+                      >
+                        <Typography variant="body2">{stat.name}</Typography>
+                        <Typography variant="body2">
+                          {stat.count} days (avg intensity: {stat.avgIntensity})
+                        </Typography>
+                      </Box>
+                    ))}
+                </Paper>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 2, backgroundColor: themeColors.secondary }}>
+                  <Typography variant="subtitle1" gutterBottom>Mood Distribution</Typography>
+                  {Object.entries(
+                    monthlyData[selectedMonth].data.reduce((acc, entry) => {
+                      acc[entry.mood] = (acc[entry.mood] || 0) + 1;
+                      return acc;
+                    }, {})
+                  )
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([mood, count]) => (
+                      <Box 
+                        key={mood} 
+                        sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between',
+                          mb: 1 
+                        }}
+                      >
+                        <Typography variant="body2">{mood}</Typography>
+                        <Typography variant="body2">{count} days</Typography>
+                      </Box>
+                    ))}
+                </Paper>
+              </Grid>
+            </Grid>
+          </>
+        )}
       </Paper>
 
       {/* Recent History */}
-      <Paper sx={{ p: 3, mt: 4 }}>
+      <Paper sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>Recent Entries</Typography>
         <Box>
-          {historicalData.slice(0, 5).map((entry) => (
+          {monthlyData[selectedMonth]?.data.slice(0, 5).map((entry) => (
             <Box 
               key={entry.id}
               sx={{ 
@@ -505,12 +653,7 @@ const SymptomTracker = () => {
           <MuiButton 
             onClick={handleAddCustomSymptom} 
             variant="contained"
-            sx={{
-              backgroundColor: themeColors.primary,
-              '&:hover': {
-                backgroundColor: themeColors.hover,
-              }
-            }}
+            sx={buttonStyle}
           >
             Add
           </MuiButton>
@@ -544,12 +687,7 @@ const SymptomTracker = () => {
           <MuiButton 
             onClick={handleAddCustomMood} 
             variant="contained"
-            sx={{
-              backgroundColor: themeColors.primary,
-              '&:hover': {
-                backgroundColor: themeColors.hover,
-              }
-            }}
+            sx={buttonStyle}
           >
             Add
           </MuiButton>
@@ -576,14 +714,8 @@ const SymptomTracker = () => {
           </MuiButton>
           <MuiButton 
             onClick={handleDeleteConfirm}
-            sx={{
-              backgroundColor: themeColors.primary,
-              color: 'white',
-              '&:hover': {
-                backgroundColor: themeColors.hover,
-              }
-            }}
             variant="contained"
+            sx={buttonStyle}
           >
             Delete
           </MuiButton>
