@@ -20,20 +20,57 @@ import {
   FormControl,
   InputLabel,
   Chip,
+  useTheme,
+  useMediaQuery,
+  Fade,
+  Slide,
+  Stack,
+  createTheme,
+  ThemeProvider,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   NotificationsActive as AlertIcon,
+  AccessTime as TimeIcon,
+  Event as EventIcon,
 } from '@mui/icons-material';
 
-const HealthTracker = () => {
-  const [medications, setMedications] = useState([
-    // { id: 1, name: 'Prenatal Vitamins', dosage: '1 tablet', frequency: 'Daily', time: '09:00', notes: 'Take with food', completed: false },
-    // { id: 2, name: 'Iron Supplement', dosage: '1 tablet', frequency: 'Daily', time: '20:00', notes: 'Take on empty stomach', completed: false }
-  ]);
+const periodTrackingTheme = createTheme({
+  palette: {
+    primary: {
+      main: '#4CAF50', // Green
+      light: '#C8E6C9', // Light Green
+      contrastText: '#FFFFFF', // White
+    },
+    secondary: {
+      main: '#388E3C', // Dark Green
+      light: '#66BB6A', // Medium Green
+      contrastText: '#FFFFFF', // White
+    },
+    background: {
+      default: '#E8F5E9', // Very Light Green
+      paper: '#FFFFFF', // White
+    },
+    text: {
+      primary: '#333333', // Dark Gray
+      secondary: '#757575', // Medium Gray
+    },
+  },
+  typography: {
+    fontFamily: 'Roboto, sans-serif',
+    h5: {
+      fontWeight: 600,
+    },
+    h6: {
+      fontWeight: 500,
+    },
+  },
+});
 
+const HealthTracker = () => {
+  const [medications, setMedications] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentMed, setCurrentMed] = useState(null);
   const [formData, setFormData] = useState({
@@ -43,6 +80,9 @@ const HealthTracker = () => {
     time: '',
     notes: ''
   });
+
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
 
   const resetForm = () => {
     setFormData({
@@ -112,129 +152,237 @@ const HealthTracker = () => {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      {/* Reminder Banner */}
-      <Paper sx={{ p: 2, mb: 3, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-        <Box display="flex" alignItems="center" gap={1}>
-          <AlertIcon />
-          <Typography>
-            {getNextMedication() 
-              ? `Next: ${getNextMedication().name} at ${getNextMedication().time}`
-              : 'No upcoming medications'}
-          </Typography>
-        </Box>
-      </Paper>
-
-      {/* Medications List */}
-      <Paper sx={{ p: 2 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h6">Medications & Supplements</Typography>
-          <IconButton color="primary" onClick={() => handleOpenDialog()}>
-            <AddIcon />
-          </IconButton>
-        </Box>
-
-        <List>
-          {medications.map((med) => (
-            <ListItem
-              key={med.id}
-              sx={{
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-                opacity: med.completed ? 0.6 : 1
-              }}
-              secondaryAction={
-                <Box>
-                  <IconButton size="small" onClick={() => handleOpenDialog(med)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => handleDelete(med.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                  <Button
-                    size="small"
-                    onClick={() => toggleComplete(med.id)}
-                    sx={{ ml: 1 }}
-                  >
-                    {med.completed ? "Undo" : "Complete"}
-                  </Button>
-                </Box>
+    <ThemeProvider theme={periodTrackingTheme}>
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        {/* Enhanced Reminder Banner */}
+        <Fade in={true} timeout={1000}>
+          <Paper 
+            elevation={3}
+            sx={{ 
+              p: 3, 
+              mb: 3, 
+              bgcolor: periodTrackingTheme.palette.primary.light,
+              color: periodTrackingTheme.palette.primary.contrastText,
+              borderRadius: 2,
+              transform: 'translateY(0)',
+              transition: 'transform 0.3s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-5px)',
               }
-            >
-              <ListItemText
-                primary={<Chip label={med.name} color="primary" />}
-                secondary={
-                  <Typography variant="body2" color="text.secondary">
-                    {`${med.dosage} • ${med.frequency} at ${med.time}${med.notes ? ` • ${med.notes}` : ''}`}
-                  </Typography>
-                }
-              />
-            </ListItem>
-          ))}
-        </List>
-      </Paper>
+            }}
+          >
+            <Box display="flex" alignItems="center" gap={2}>
+              <AlertIcon fontSize="large" />
+              <Typography variant="h6" sx={{ fontWeight: 500 }}>
+                {getNextMedication() 
+                  ? `Next Medication: ${getNextMedication().name} at ${getNextMedication().time}`
+                  : 'No upcoming medications'}
+              </Typography>
+            </Box>
+          </Paper>
+        </Fade>
 
-      {/* Add/Edit Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog}>
-        <DialogTitle>
-          {currentMed ? 'Edit Medication' : 'Add New Medication'}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Medication Name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Dosage"
-              value={formData.dosage}
-              onChange={(e) => setFormData({ ...formData, dosage: e.target.value })}
-              fullWidth
-              required
-            />
-            <FormControl fullWidth>
-              <InputLabel>Frequency</InputLabel>
-              <Select
-                value={formData.frequency}
-                onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
-                label="Frequency"
+        {/* Enhanced Medications List */}
+        <Fade in={true} timeout={1000}>
+          <Paper 
+            elevation={3}
+            sx={{ 
+              p: 3, 
+              borderRadius: 2,
+              bgcolor: periodTrackingTheme.palette.background.paper
+            }}
+          >
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+              <Typography variant="h5" sx={{ fontWeight: 600, color: periodTrackingTheme.palette.primary.main }}>
+                Medications & Supplements
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => handleOpenDialog()}
+                sx={{ borderRadius: 28 }}
               >
-                <MenuItem value="Daily">Daily</MenuItem>
-                <MenuItem value="Weekly">Weekly</MenuItem>
-                <MenuItem value="Monthly">Monthly</MenuItem>
-                <MenuItem value="As Needed">As Needed</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              label="Time"
-              type="time"
-              value={formData.time}
-              onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-              fullWidth
-              required
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="Notes"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              fullWidth
-              multiline
-              rows={3}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained">
-            {currentMed ? 'Save' : 'Add'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+                Add New
+              </Button>
+            </Box>
+
+            <List sx={{ width: '100%' }}>
+              {medications.map((med) => (
+                <Slide key={med.id} direction="up" in={true} timeout={500}>
+                  <ListItem
+                    sx={{
+                      mb: 2,
+                      borderRadius: 2,
+                      bgcolor: med.completed ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+                      '&:hover': { 
+                        bgcolor: 'rgba(0, 0, 0, 0.08)',
+                        transition: 'background-color 0.3s ease'
+                      }
+                    }}
+                  >
+                    <ListItemText
+                      primary={
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Chip 
+                            label={med.name}
+                            color="primary"
+                            sx={{ fontWeight: 500 }}
+                          />
+                          <Chip
+                            icon={<TimeIcon />}
+                            label={med.time}
+                            variant="outlined"
+                            size="small"
+                          />
+                          <Chip
+                            icon={<EventIcon />}
+                            label={med.frequency}
+                            variant="outlined"
+                            size="small"
+                          />
+                        </Stack>
+                      }
+                      secondary={
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            mt: 1,
+                            color: periodTrackingTheme.palette.text.secondary,
+                            textDecoration: med.completed ? 'line-through' : 'none'
+                          }}
+                        >
+                          {`${med.dosage}${med.notes ? ` • ${med.notes}` : ''}`}
+                        </Typography>
+                      }
+                    />
+                    <Stack direction="row" spacing={1}>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleOpenDialog(med)}
+                        color="primary"
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleDelete(med.id)}
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => toggleComplete(med.id)}
+                        sx={{ ml: 1 }}
+                      >
+                        {med.completed ? "Undo" : "Complete"}
+                      </Button>
+                    </Stack>
+                  </ListItem>
+                </Slide>
+              ))}
+              {medications.length === 0 && (
+                <Typography 
+                  variant="body1" 
+                  color="text.secondary"
+                  sx={{ textAlign: 'center', py: 4 }}
+                >
+                  No medications added yet. Click the &quot;Add New&quot; button to get started.
+                </Typography>
+              )}
+            </List>
+          </Paper>
+        </Fade>
+
+        {/* Enhanced Add/Edit Dialog */}
+        <Dialog 
+          open={openDialog} 
+          onClose={handleCloseDialog} 
+          fullScreen={fullScreen}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle sx={{ 
+            borderBottom: 1, 
+            borderColor: 'divider',
+            pb: 2
+          }}>
+            <Typography variant="h6" component="div">
+              {currentMed ? 'Edit Medication' : 'Add New Medication'}
+            </Typography>
+          </DialogTitle>
+          <DialogContent sx={{ pt: 3 }}>
+            <Stack spacing={3} sx={{ width: '100%' }}>
+              <TextField
+                label="Medication Name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                fullWidth
+                required
+                variant="outlined"
+              />
+              <TextField
+                label="Dosage"
+                value={formData.dosage}
+                onChange={(e) => setFormData({ ...formData, dosage: e.target.value })}
+                fullWidth
+                required
+                variant="outlined"
+                placeholder="e.g., 1 tablet, 5ml, etc."
+              />
+              <FormControl fullWidth variant="outlined">
+                <InputLabel>Frequency</InputLabel>
+                <Select
+                  value={formData.frequency}
+                  onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
+                  label="Frequency"
+                >
+                  <MenuItem value="Daily">Daily</MenuItem>
+                  <MenuItem value="Twice Daily">Twice Daily</MenuItem>
+                  <MenuItem value="Weekly">Weekly</MenuItem>
+                  <MenuItem value="Monthly">Monthly</MenuItem>
+                  <MenuItem value="As Needed">As Needed</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="Time"
+                type="time"
+                value={formData.time}
+                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                fullWidth
+                required
+                InputLabelProps={{ shrink: true }}
+                variant="outlined"
+              />
+              <TextField
+                label="Notes"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                fullWidth
+                multiline
+                rows={3}
+                variant="outlined"
+                placeholder="Add any special instructions or notes here"
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, borderTop: 1, borderColor: 'divider' }}>
+            <Button onClick={handleCloseDialog} color="inherit">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSave} 
+              variant="contained" 
+              color="primary"
+              disabled={!formData.name || !formData.dosage || !formData.time}
+            >
+              {currentMed ? 'Save Changes' : 'Add Medication'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Container>
+    </ThemeProvider>
   );
 };
 
