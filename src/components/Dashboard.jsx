@@ -27,9 +27,11 @@ import {
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 
+import CycleCalendar from './Cyclecalendar';
 import SymptomTracker from './SymptomTracker';
 import Insights from './Insights';
 import HealthAndMedication from './HealthandMedication';
+
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
@@ -204,18 +206,15 @@ const Dashboard = () => {
             </Tabs>
 
             {/* Tab Content */}
-            <Box sx={{ 
+                        <Box sx={{
               flexGrow: 1,
               overflowY: 'auto',
               p: 3,
               bgcolor: 'background.paper'
             }}>
               {activeTab === 0 && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                  <Typography color="textSecondary">Calendar View Coming Soon</Typography>
-                </Box>
+                <CycleCalendar />
               )}
-
               {activeTab === 1 && (
                 <div>
                   {/* <Typography variant="h6" gutterBottom>Recent Symptoms</Typography>
