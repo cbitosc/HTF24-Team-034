@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -11,7 +10,6 @@ import {
   Paper,
   Tabs,
   Tab,
-  Chip,
   IconButton,
   Box,
 } from '@mui/material';
@@ -20,23 +18,102 @@ import {
   AccessTime,
   Notifications,
   Favorite,
-  BarChart,
-  MenuBook,
   ExitToApp,
+  Water,
+  Mood,
+  Spa, // For Menstrual phase
+  WbSunny, // For Follicular phase
+  Stars, // For Ovulation phase
+  NightsStay, // For Luteal phase
 } from '@mui/icons-material';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 
-import CycleCalendar from './Cyclecalendar';
+import CycleCalendar from './CycleCalendar';
 import SymptomTracker from './SymptomTracker';
 import Insights from './Insights';
 import HealthAndMedication from './HealthandMedication';
-
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+
+  // Function to calculate next period window
+  const calculateNextPeriodWindow = (lastPeriodStart, lastPeriodEnd, cycleLength) => {
+    const daysBetween = Math.round((new Date(lastPeriodEnd) - new Date(lastPeriodStart)) / (1000 * 60 * 60 * 24));
+    const nextPeriodStart = new Date(lastPeriodStart);
+    nextPeriodStart.setDate(nextPeriodStart.getDate() + cycleLength);
+    const nextPeriodEnd = new Date(nextPeriodStart);
+    nextPeriodEnd.setDate(nextPeriodStart.getDate() + daysBetween);
+    
+    return {
+      start: nextPeriodStart,
+      end: nextPeriodEnd
+    };
+  };
+
+  // Function to determine current phase
+  const determinePhase = (lastPeriodStart, lastPeriodEnd, cycleLength) => {
+    const today = new Date();
+    const lastStart = new Date(lastPeriodStart);
+    const lastEnd = new Date(lastPeriodEnd);
+    const periodLength = Math.round((lastEnd - lastStart) / (1000 * 60 * 60 * 24));
+    const daysSinceLastPeriod = Math.floor((today - lastStart) / (1000 * 60 * 60 * 24));
+    const cycleDay = (daysSinceLastPeriod % cycleLength) + 1;
+
+    if (cycleDay <= periodLength) return "Menstrual";
+    if (cycleDay <= 13) return "Follicular";
+    if (cycleDay <= 15) return "Ovulation";
+    return "Luteal";
+  };
+
+  // Format date for display
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  // Get phase icon
+  const getPhaseIcon = (phase) => {
+    const icons = {
+      Menstrual: <Spa sx={{ color: '#d32f2f' }} />,
+      Follicular: <WbSunny sx={{ color: '#ed6c02' }} />,
+      Ovulation: <Stars sx={{ color: '#9c27b0' }} />,
+      Luteal: <NightsStay sx={{ color: '#0288d1' }} />
+    };
+    return icons[phase] || <Mood />;
+  };
+
+  // Mock user data with calculated values
+  const userData = {
+    lastPeriod: {
+      start: "2024-10-18",
+      end: "2024-10-23"
+    },
+    cycleLength: 28,
+    get nextPeriod() {
+      const nextWindow = calculateNextPeriodWindow(
+        this.lastPeriod.start,
+        this.lastPeriod.end,
+        this.cycleLength
+      );
+      return {
+        start: formatDate(nextWindow.start),
+        end: formatDate(nextWindow.end)
+      };
+    },
+    get currentPhase() {
+      return determinePhase(
+        this.lastPeriod.start,
+        this.lastPeriod.end,
+        this.cycleLength
+      );
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -59,12 +136,15 @@ const Dashboard = () => {
     }
   };
 
-  // Mock user data
-  const userData = {
-    nextPeriod: "November 15, 2024",
-    cycleLength: 28,
-    lastPeriod: "October 18, 2024",
-    symptoms: ["Cramps", "Headache", "Fatigue"]
+  // Get phase color
+  const getPhaseColor = (phase) => {
+    const colors = {
+      Menstrual: '#ffebee',
+      Follicular: '#fff3e0',
+      Ovulation: '#f3e5f5',
+      Luteal: '#e1f5fe'
+    };
+    return colors[phase] || '#ffffff';
   };
 
   if (!user) return null;
@@ -105,8 +185,8 @@ const Dashboard = () => {
         sx={{
           flexGrow: 1,
           overflowY: 'auto',
-          height: 'calc(100vh - 64px)', // Subtract AppBar height
-          bgcolor: '#faf5ff', // Light purple background
+          height: 'calc(100vh - 64px)',
+          bgcolor: '#faf5ff',
         }}
       >
         <Container 
@@ -120,7 +200,7 @@ const Dashboard = () => {
         >
           {/* Quick Stats */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid item xs={12} sm={6} md={3}>
               <Paper 
                 elevation={2}
                 sx={{ 
@@ -133,13 +213,16 @@ const Dashboard = () => {
                   <CalendarToday sx={{ mr: 2, color: 'pink' }} />
                   <div>
                     <Typography variant="body2" color="textSecondary">Next Period</Typography>
-                    <Typography variant="h6">{userData.nextPeriod}</Typography>
+                    <Typography variant="h6">{userData.nextPeriod.start}</Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      to {userData.nextPeriod.end}
+                    </Typography>
                   </div>
                 </Box>
               </Paper>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid item xs={12} sm={6} md={3}>
               <Paper 
                 elevation={2}
                 sx={{ 
@@ -158,7 +241,7 @@ const Dashboard = () => {
               </Paper>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid item xs={12} sm={6} md={3}>
               <Paper 
                 elevation={2}
                 sx={{ 
@@ -168,11 +251,33 @@ const Dashboard = () => {
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <BarChart sx={{ mr: 2, color: 'blue' }} />
+                  <Water sx={{ mr: 2, color: 'blue' }} />
                   <div>
                     <Typography variant="body2" color="textSecondary">Last Period</Typography>
-                    <Typography variant="h6">{userData.lastPeriod}</Typography>
+                    <Typography variant="h6">{formatDate(userData.lastPeriod.start)}</Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      to {formatDate(userData.lastPeriod.end)}
+                    </Typography>
                   </div>
+                </Box>
+              </Paper>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper 
+                elevation={2}
+                sx={{ 
+                  p: 3, 
+                  height: '100%',
+                  bgcolor: getPhaseColor(userData.currentPhase)
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  {getPhaseIcon(userData.currentPhase)}
+                  <Box sx={{ ml: 2 }}>
+                    <Typography variant="body2" color="textSecondary">Current Phase</Typography>
+                    <Typography variant="h6">{userData.currentPhase}</Typography>
+                  </Box>
                 </Box>
               </Paper>
             </Grid>
@@ -206,50 +311,16 @@ const Dashboard = () => {
             </Tabs>
 
             {/* Tab Content */}
-                        <Box sx={{
+            <Box sx={{
               flexGrow: 1,
               overflowY: 'auto',
               p: 3,
               bgcolor: 'background.paper'
             }}>
-              {activeTab === 0 && (
-                <CycleCalendar />
-              )}
-              {activeTab === 1 && (
-                <div>
-                  {/* <Typography variant="h6" gutterBottom>Recent Symptoms</Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {userData.symptoms.map((symptom, index) => (
-                      <Chip 
-                        key={index} 
-                        label={symptom} 
-                        sx={{
-                          bgcolor: 'pink.50',
-                          color: 'pink.700',
-                          '&:hover': {
-                            bgcolor: 'pink.100'
-                          }
-                        }}
-                      />
-                    ))}
-                  </Box> */}
-                  <SymptomTracker />
-                </div>
-              )}
-
-              {activeTab === 2 && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                  {/* <Typography color="textSecondary">Insights Coming Soon</Typography> */}
-                  <Insights />
-                </Box>
-              )}
-
-              {activeTab === 3 && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                  {/* <Typography color="textSecondary">Health and Medication Content Coming Soon</Typography> */}
-                  <HealthAndMedication />
-                </Box>
-              )}
+              {activeTab === 0 && <CycleCalendar />}
+              {activeTab === 1 && <SymptomTracker />}
+              {activeTab === 2 && <Insights />}
+              {activeTab === 3 && <HealthAndMedication />}
             </Box>
           </Paper>
         </Container>

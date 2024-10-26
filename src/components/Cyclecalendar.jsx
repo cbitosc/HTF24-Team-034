@@ -1,24 +1,15 @@
-import React, { useState } from 'react';
+/* eslint-disable no-unused-vars */
+import React, { useState, useEffect } from 'react';
 import { 
-  Paper,
-  Grid,
-  Typography,
-  Button,
-  Box,
-  Chip,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Card,
-  CardContent,
+  Paper, Grid, Typography, Button, Box, Chip,
+  IconButton, Dialog, DialogTitle, DialogContent,
+  DialogActions, Card, CardContent, Select,
+  MenuItem, FormControl, InputLabel, Stack,
+  Slider, Alert
 } from '@mui/material';
 import {
-  ChevronLeft,
-  ChevronRight,
-  CalendarToday,
-  Favorite
+  ChevronLeft, ChevronRight, CalendarToday,
+  Favorite, Water, Mood, LocalHospital
 } from '@mui/icons-material';
 
 const CycleCalendar = () => {
@@ -28,91 +19,96 @@ const CycleCalendar = () => {
     lastPeriod: null,
     cycleLength: 28,
     periodLength: 5,
+    symptoms: {}
   });
   const [openDialog, setOpenDialog] = useState(false);
 
-  // Calculate the first day of the current month
-  const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  const startingDayIndex = firstDayOfMonth.getDay();
-  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+  // Cycle phases
+  const CYCLE_PHASES = {
+    MENSTRUAL: { name: 'Menstrual', color: '#ffcdd2', description: 'Bleeding phase' },
+    FOLLICULAR: { name: 'Follicular', color: '#fff3e0', description: 'Body preparing for ovulation' },
+    OVULATION: { name: 'Ovulation', color: '#f8bbd0', description: 'Most fertile period' },
+    LUTEAL: { name: 'Luteal', color: '#e1f5fe', description: 'Post-ovulation phase' }
+  };
 
-  // Calculate days until next period and fertility window
-  const calculateNextPeriodAndFertility = (date) => {
+  // Flow levels
+  const FLOW_LEVELS = [
+    { value: 'none', label: 'None' },
+    { value: 'light', label: 'Light' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'heavy', label: 'Heavy' }
+  ];
+
+  // Common symptoms
+  const SYMPTOMS = [
+    { value: 'cramps', label: 'Cramps', icon: LocalHospital },
+    { value: 'headache', label: 'Headache', icon: LocalHospital },
+    { value: 'fatigue', label: 'Fatigue', icon: LocalHospital },
+    { value: 'bloating', label: 'Bloating', icon: LocalHospital },
+    { value: 'moodSwings', label: 'Mood Swings', icon: Mood },
+    { value: 'breastTenderness', label: 'Breast Tenderness', icon: LocalHospital }
+  ];
+
+  // Calculate current cycle phase
+  const calculateCyclePhase = (date) => {
     if (!cycleData.lastPeriod) return null;
 
     const lastPeriod = new Date(cycleData.lastPeriod);
-    const today = new Date(date);
-    const daysSinceLastPeriod = Math.floor((today - lastPeriod) / (1000 * 60 * 60 * 24));
-    const daysUntilNextPeriod = cycleData.cycleLength - (daysSinceLastPeriod % cycleData.cycleLength);
-    
-    // Calculate fertility window (typically days 11-17 of the cycle)
-    const currentCycleDay = daysSinceLastPeriod % cycleData.cycleLength;
-    const fertilityChance = calculateFertilityChance(currentCycleDay);
+    const daysSinceLastPeriod = Math.floor((date - lastPeriod) / (1000 * 60 * 60 * 24));
+    const cycleDay = (daysSinceLastPeriod % cycleData.cycleLength) + 1;
 
-    return {
-      daysUntilNextPeriod,
-      fertilityChance
-    };
-  };
-
-  // Calculate fertility chance based on cycle day
-  const calculateFertilityChance = (cycleDay) => {
-    if (cycleDay >= 11 && cycleDay <= 17) {
-      if (cycleDay >= 13 && cycleDay <= 15) {
-        return 'High (25-30%)';
-      }
-      return 'Medium (15-25%)';
-    } else if ((cycleDay >= 8 && cycleDay <= 10) || (cycleDay >= 18 && cycleDay <= 20)) {
-      return 'Low (5-10%)';
+    if (cycleDay <= 5) {
+      return CYCLE_PHASES.MENSTRUAL;
+    } else if (cycleDay <= 13) {
+      return CYCLE_PHASES.FOLLICULAR;
+    } else if (cycleDay <= 15) {
+      return CYCLE_PHASES.OVULATION;
+    } else {
+      return CYCLE_PHASES.LUTEAL;
     }
-    return 'Very Low (<5%)';
   };
 
-  // Get cell style based on fertility chance
+  // Get cell style based on cycle phase
   const getCellStyle = (day) => {
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-    const prediction = calculateNextPeriodAndFertility(date);
+    const phase = calculateCyclePhase(date);
 
-    const baseStyle = {
+    return {
       height: '80px',
       p: 1,
       border: '1px solid #e0e0e0',
       cursor: 'pointer',
       position: 'relative',
-      bgcolor: 'background.paper',
+      bgcolor: phase ? phase.color : 'background.paper',
       '&:hover': {
         bgcolor: 'action.hover'
       }
     };
-
-    if (!prediction) return baseStyle;
-
-    const cycleInfo = calculateNextPeriodAndFertility(date);
-    if (!cycleInfo) return baseStyle;
-
-    if (cycleInfo.fertilityChance.includes('High')) {
-      return { ...baseStyle, bgcolor: '#ffebee' };
-    } else if (cycleInfo.fertilityChance.includes('Medium')) {
-      return { ...baseStyle, bgcolor: '#fff3e0' };
-    } else if (cycleInfo.fertilityChance.includes('Low')) {
-      return { ...baseStyle, bgcolor: '#fff8e1' };
-    }
-    return baseStyle;
   };
 
-  // Handle date selection
-  const handleDateSelect = (day) => {
-    const selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-    setSelectedDate(selectedDate);
-    setOpenDialog(true);
+  // Handle symptom logging
+  const [selectedSymptoms, setSelectedSymptoms] = useState([]);
+  const [flowLevel, setFlowLevel] = useState('none');
+
+  const handleSymptomToggle = (symptom) => {
+    setSelectedSymptoms(prev => 
+      prev.includes(symptom)
+        ? prev.filter(s => s !== symptom)
+        : [...prev, symptom]
+    );
   };
 
-  // Handle period logging
-  const handleLogPeriod = () => {
-    setCycleData({
-      ...cycleData,
-      lastPeriod: selectedDate
-    });
+  const handleLogDay = () => {
+    setCycleData(prev => ({
+      ...prev,
+      symptoms: {
+        ...prev.symptoms,
+        [selectedDate.toISOString()]: {
+          flow: flowLevel,
+          symptoms: selectedSymptoms
+        }
+      }
+    }));
     setOpenDialog(false);
   };
 
@@ -122,6 +118,11 @@ const CycleCalendar = () => {
     newDate.setMonth(currentDate.getMonth() + direction);
     setCurrentDate(newDate);
   };
+
+  // Calculate calendar grid
+  const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const startingDayIndex = firstDayOfMonth.getDay();
+  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
 
   return (
     <Box sx={{ p: 2 }}>
@@ -140,40 +141,18 @@ const CycleCalendar = () => {
             </IconButton>
           </Box>
 
-          {/* Prediction Info */}
-          {cycleData.lastPeriod && (
-            <Box sx={{ mb: 3 }}>
-              <Paper elevation={0} sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CalendarToday color="primary" />
-                    <Typography variant="subtitle1">Next Period in:</Typography>
-                  </Box>
-                  <Typography variant="h6" color="primary">
-                    {calculateNextPeriodAndFertility(new Date())?.daysUntilNextPeriod} days
-                  </Typography>
-                </Box>
-              </Paper>
-            </Box>
-          )}
-
-          {/* Legend */}
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Chip 
-              icon={<Favorite sx={{ color: '#f44336' }} />}
-              label="High Fertility (25-30%)" 
-              sx={{ bgcolor: '#ffebee' }}
-            />
-            <Chip 
-              icon={<Favorite sx={{ color: '#ff9800' }} />}
-              label="Medium Fertility (15-25%)" 
-              sx={{ bgcolor: '#fff3e0' }}
-            />
-            <Chip 
-              icon={<Favorite sx={{ color: '#ffd54f' }} />}
-              label="Low Fertility (5-10%)" 
-              sx={{ bgcolor: '#fff8e1' }}
-            />
+          {/* Cycle Phase Legend */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>Cycle Phases</Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {Object.values(CYCLE_PHASES).map(phase => (
+                <Chip
+                  key={phase.name}
+                  label={phase.name}
+                  sx={{ bgcolor: phase.color, mb: 1 }}
+                />
+              ))}
+            </Stack>
           </Box>
 
           {/* Calendar Grid */}
@@ -195,19 +174,30 @@ const CycleCalendar = () => {
             {Array.from({ length: daysInMonth }).map((_, index) => {
               const day = index + 1;
               const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-              const prediction = calculateNextPeriodAndFertility(date);
+              const dateStr = date.toISOString();
+              const dayData = cycleData.symptoms[dateStr];
               
               return (
                 <Grid key={day} item xs={12/7}>
                   <Box 
-                    onClick={() => handleDateSelect(day)}
+                    onClick={() => {
+                      setSelectedDate(date);
+                      setSelectedSymptoms(dayData?.symptoms || []);
+                      setFlowLevel(dayData?.flow || 'none');
+                      setOpenDialog(true);
+                    }}
                     sx={getCellStyle(day)}
                   >
                     <Typography>{day}</Typography>
-                    {prediction && (
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        {prediction.fertilityChance}
-                      </Typography>
+                    {dayData && (
+                      <Box sx={{ mt: 1 }}>
+                        {dayData.flow !== 'none' && (
+                          <Water sx={{ color: 'primary.main', fontSize: 16 }} />
+                        )}
+                        {dayData.symptoms.length > 0 && (
+                          <LocalHospital sx={{ color: 'error.main', fontSize: 16 }} />
+                        )}
+                      </Box>
                     )}
                   </Box>
                 </Grid>
@@ -215,25 +205,72 @@ const CycleCalendar = () => {
             })}
           </Grid>
 
-          {/* Date Selection Dialog */}
-          <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+          {/* Log Dialog */}
+          <Dialog 
+            open={openDialog} 
+            onClose={() => setOpenDialog(false)}
+            maxWidth="sm"
+            fullWidth
+          >
             <DialogTitle>
-              {selectedDate?.toLocaleDateString()}
+              Log for {selectedDate?.toLocaleDateString()}
             </DialogTitle>
             <DialogContent>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleLogPeriod}
-                  startIcon={<CalendarToday />}
-                >
-                  Log Period Start
-                </Button>
-              </Box>
+              <Stack spacing={3} sx={{ mt: 2 }}>
+                {/* Flow Level Selection */}
+                <FormControl fullWidth>
+                  <InputLabel>Flow Level</InputLabel>
+                  <Select
+                    value={flowLevel}
+                    label="Flow Level"
+                    onChange={(e) => setFlowLevel(e.target.value)}
+                  >
+                    {FLOW_LEVELS.map(level => (
+                      <MenuItem key={level.value} value={level.value}>
+                        {level.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {/* Symptoms Selection */}
+                <Box>
+                  <Typography variant="subtitle1" gutterBottom>Symptoms</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {SYMPTOMS.map(symptom => (
+                      <Chip
+                        key={symptom.value}
+                        label={symptom.label}
+                        icon={<symptom.icon />}
+                        onClick={() => handleSymptomToggle(symptom.value)}
+                        color={selectedSymptoms.includes(symptom.value) ? "primary" : "default"}
+                        sx={{ m: 0.5 }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+
+                {/* Period Start Option */}
+                {!cycleData.lastPeriod && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => {
+                      setCycleData(prev => ({
+                        ...prev,
+                        lastPeriod: selectedDate
+                      }));
+                    }}
+                    startIcon={<CalendarToday />}
+                  >
+                    Mark as Period Start
+                  </Button>
+                )}
+              </Stack>
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setOpenDialog(false)}>Close</Button>
+              <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+              <Button onClick={handleLogDay} variant="contained">Save</Button>
             </DialogActions>
           </Dialog>
         </CardContent>
