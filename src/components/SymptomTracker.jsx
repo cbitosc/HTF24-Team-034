@@ -36,6 +36,7 @@ import {
   AddCircleOutline,
   DeleteOutline,
   Save as SaveIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
 import {
   LineChart,
@@ -47,7 +48,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-const SYMPTOMS = [
+const DEFAULT_SYMPTOMS = [
   "Cramps",
   "Headache",
   "Fatigue",
@@ -59,7 +60,7 @@ const SYMPTOMS = [
   "Nausea"
 ];
 
-const MOODS = [
+const DEFAULT_MOODS = [
   "Happy",
   "Calm",
   "Irritable",
@@ -71,17 +72,24 @@ const MOODS = [
 ];
 
 const SymptomTracker = () => {
-  // Initialize all state variables properly
   const [symptoms, setSymptoms] = useState([]);
   const [selectedSymptom, setSelectedSymptom] = useState("");
   const [intensity, setIntensity] = useState([3]);
   const [mood, setMood] = useState("");
   const [notes, setNotes] = useState("");
-  const [historicalData, setHistoricalData] = useState([]); // Initialize as empty array
+  const [historicalData, setHistoricalData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState(null);
+  
+  // Custom options state
+  const [availableSymptoms, setAvailableSymptoms] = useState(DEFAULT_SYMPTOMS);
+  const [availableMoods, setAvailableMoods] = useState(DEFAULT_MOODS);
+  const [customSymptomDialog, setCustomSymptomDialog] = useState(false);
+  const [customMoodDialog, setCustomMoodDialog] = useState(false);
+  const [newCustomSymptom, setNewCustomSymptom] = useState("");
+  const [newCustomMood, setNewCustomMood] = useState("");
 
   useEffect(() => {
     fetchSymptomHistory();
@@ -129,6 +137,24 @@ const SymptomTracker = () => {
     }
   };
 
+  const handleAddCustomSymptom = () => {
+    if (newCustomSymptom && !availableSymptoms.includes(newCustomSymptom)) {
+      setAvailableSymptoms([...availableSymptoms, newCustomSymptom]);
+      setSelectedSymptom(newCustomSymptom);
+      setNewCustomSymptom("");
+      setCustomSymptomDialog(false);
+    }
+  };
+
+  const handleAddCustomMood = () => {
+    if (newCustomMood && !availableMoods.includes(newCustomMood)) {
+      setAvailableMoods([...availableMoods, newCustomMood]);
+      setMood(newCustomMood);
+      setNewCustomMood("");
+      setCustomMoodDialog(false);
+    }
+  };
+
   const handleRemoveSymptom = (symptomName) => {
     setSymptoms(symptoms.filter(s => s.name !== symptomName));
   };
@@ -145,7 +171,6 @@ const SymptomTracker = () => {
       const docRef = doc(db, 'symptomLogs', entryToDelete.id);
       await deleteDoc(docRef);
       
-      // Update the UI by removing the deleted entry
       setHistoricalData(prevData => 
         prevData.filter(entry => entry.id !== entryToDelete.id)
       );
@@ -205,20 +230,29 @@ const SymptomTracker = () => {
         
         <Grid container spacing={2} mb={3}>
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>Select Symptom</InputLabel>
-              <MuiSelect
-                value={selectedSymptom}
-                onChange={(e) => setSelectedSymptom(e.target.value)}
-                label="Select Symptom"
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <FormControl fullWidth>
+                <InputLabel>Select Symptom</InputLabel>
+                <MuiSelect
+                  value={selectedSymptom}
+                  onChange={(e) => setSelectedSymptom(e.target.value)}
+                  label="Select Symptom"
+                >
+                  {availableSymptoms.map(symptom => (
+                    <MenuItem key={symptom} value={symptom}>
+                      {symptom}
+                    </MenuItem>
+                  ))}
+                </MuiSelect>
+              </FormControl>
+              <MuiButton
+                variant="outlined"
+                onClick={() => setCustomSymptomDialog(true)}
+                startIcon={<AddIcon />}
               >
-                {SYMPTOMS.map(symptom => (
-                  <MenuItem key={symptom} value={symptom}>
-                    {symptom}
-                  </MenuItem>
-                ))}
-              </MuiSelect>
-            </FormControl>
+                Add New
+              </MuiButton>
+            </Box>
           </Grid>
 
           <Grid item xs={12} sm={4}>
@@ -262,20 +296,29 @@ const SymptomTracker = () => {
         </Box>
 
         {/* Mood Selection */}
-        <FormControl fullWidth sx={{ mb: 3 }}>
-          <InputLabel>Select Mood</InputLabel>
-          <MuiSelect
-            value={mood}
-            onChange={(e) => setMood(e.target.value)}
-            label="Select Mood"
+        <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
+          <FormControl fullWidth>
+            <InputLabel>Select Mood</InputLabel>
+            <MuiSelect
+              value={mood}
+              onChange={(e) => setMood(e.target.value)}
+              label="Select Mood"
+            >
+              {availableMoods.map(m => (
+                <MenuItem key={m} value={m}>
+                  {m}
+                </MenuItem>
+              ))}
+            </MuiSelect>
+          </FormControl>
+          <MuiButton
+            variant="outlined"
+            onClick={() => setCustomMoodDialog(true)}
+            startIcon={<AddIcon />}
           >
-            {MOODS.map(m => (
-              <MenuItem key={m} value={m}>
-                {m}
-              </MenuItem>
-            ))}
-          </MuiSelect>
-        </FormControl>
+            Add New
+          </MuiButton>
+        </Box>
 
         {/* Notes */}
         <TextField
@@ -370,6 +413,60 @@ const SymptomTracker = () => {
         </Box>
       </Paper>
 
+      {/* Custom Symptom Dialog */}
+      <Dialog
+        open={customSymptomDialog}
+        onClose={() => setCustomSymptomDialog(false)}
+      >
+        <DialogTitle>Add Custom Symptom</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="New Symptom"
+            fullWidth
+            variant="outlined"
+            value={newCustomSymptom}
+            onChange={(e) => setNewCustomSymptom(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <MuiButton onClick={() => setCustomSymptomDialog(false)}>
+            Cancel
+          </MuiButton>
+          <MuiButton onClick={handleAddCustomSymptom} variant="contained">
+            Add
+          </MuiButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* Custom Mood Dialog */}
+      <Dialog
+        open={customMoodDialog}
+        onClose={() => setCustomMoodDialog(false)}
+      >
+        <DialogTitle>Add Custom Mood</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="New Mood"
+            fullWidth
+            variant="outlined"
+            value={newCustomMood}
+            onChange={(e) => setNewCustomMood(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <MuiButton onClick={() => setCustomMoodDialog(false)}>
+            Cancel
+          </MuiButton>
+          <MuiButton onClick={handleAddCustomMood} variant="contained">
+            Add
+          </MuiButton>
+        </DialogActions>
+      </Dialog>
+
       {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialogOpen}
@@ -389,16 +486,16 @@ const SymptomTracker = () => {
             Cancel
           </MuiButton>
           <MuiButton 
-            onClick={handleDeleteConfirm}
-            color="error"
-            variant="contained"
-          >
-            Delete
-          </MuiButton>
-        </DialogActions>
-      </Dialog>
-    </Container>
-  );
+  onClick={handleDeleteConfirm}
+  color="error"
+  variant="contained"
+>
+  Delete
+</MuiButton>
+</DialogActions>
+</Dialog>
+</Container>
+);
 };
 
 export default SymptomTracker;
