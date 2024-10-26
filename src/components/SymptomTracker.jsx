@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { db, auth } from '../firebase';
@@ -72,6 +71,13 @@ const DEFAULT_MOODS = [
   "Stressed"
 ];
 
+// Custom theme colors
+const themeColors = {
+  primary: '#ec4899', // Pink
+  secondary: '#fde7f3', // Light pink
+  hover: '#be185d', // Darker pink
+};
+
 const SymptomTracker = () => {
   const [symptoms, setSymptoms] = useState([]);
   const [selectedSymptom, setSelectedSymptom] = useState("");
@@ -83,8 +89,6 @@ const SymptomTracker = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState(null);
-  
-  // Custom options state
   const [availableSymptoms, setAvailableSymptoms] = useState(DEFAULT_SYMPTOMS);
   const [availableMoods, setAvailableMoods] = useState(DEFAULT_MOODS);
   const [customSymptomDialog, setCustomSymptomDialog] = useState(false);
@@ -199,12 +203,10 @@ const SymptomTracker = () => {
         timestamp: serverTimestamp()
       });
 
-      // Reset form
       setSymptoms([]);
       setMood("");
       setNotes("");
       
-      // Refresh history
       await fetchSymptomHistory();
     } catch (error) {
       console.error('Error saving symptoms:', error);
@@ -213,6 +215,23 @@ const SymptomTracker = () => {
 
   const getChartData = () => {
     return historicalData.slice(0, 7).reverse();
+  };
+
+  const buttonStyle = {
+    backgroundColor: themeColors.primary,
+    color: 'white',
+    '&:hover': {
+      backgroundColor: themeColors.hover,
+    }
+  };
+
+  const outlinedButtonStyle = {
+    borderColor: themeColors.primary,
+    color: themeColors.primary,
+    '&:hover': {
+      borderColor: themeColors.hover,
+      backgroundColor: themeColors.secondary,
+    }
   };
 
   if (isLoading) {
@@ -225,38 +244,76 @@ const SymptomTracker = () => {
 
   return (
     <Container maxWidth="md" sx={{ my: 4 }}>
-      {/* Symptom Input Section */}
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>Track Today&apos;s Symptoms</Typography>
         
-        <Grid container spacing={2} mb={3}>
-          <Grid item xs={12} sm={6}>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <FormControl fullWidth>
-                <InputLabel>Select Symptom</InputLabel>
-                <MuiSelect
-                  value={selectedSymptom}
-                  onChange={(e) => setSelectedSymptom(e.target.value)}
-                  label="Select Symptom"
-                >
-                  {availableSymptoms.map(symptom => (
-                    <MenuItem key={symptom} value={symptom}>
-                      {symptom}
-                    </MenuItem>
-                  ))}
-                </MuiSelect>
-              </FormControl>
-              <MuiButton
-                variant="outlined"
-                onClick={() => setCustomSymptomDialog(true)}
-                startIcon={<AddIcon />}
+        {/* Symptom Selection Row */}
+        <Grid container spacing={2} alignItems="center" mb={2}>
+          <Grid item xs={9}>
+            <FormControl fullWidth>
+              <InputLabel>Select Symptom</InputLabel>
+              <MuiSelect
+                value={selectedSymptom}
+                onChange={(e) => setSelectedSymptom(e.target.value)}
+                label="Select Symptom"
               >
-                Add New
-              </MuiButton>
-            </Box>
+                {availableSymptoms.map(symptom => (
+                  <MenuItem key={symptom} value={symptom}>
+                    {symptom}
+                  </MenuItem>
+                ))}
+              </MuiSelect>
+            </FormControl>
           </Grid>
+          <Grid item xs={3}>
+            <MuiButton
+              variant="outlined"
+              onClick={() => setCustomSymptomDialog(true)}
+              startIcon={<AddIcon />}
+              fullWidth
+              sx={outlinedButtonStyle}
+            >
+              Add New
+            </MuiButton>
+          </Grid>
+        </Grid>
 
-          <Grid item xs={12} sm={4}>
+        
+
+        {/* Mood Selection Row */}
+        <Grid container spacing={2} alignItems="center" mb={3}>
+          <Grid item xs={9}>
+            <FormControl fullWidth>
+              <InputLabel>Select Mood</InputLabel>
+              <MuiSelect
+                value={mood}
+                onChange={(e) => setMood(e.target.value)}
+                label="Select Mood"
+              >
+                {availableMoods.map(m => (
+                  <MenuItem key={m} value={m}>
+                    {m}
+                  </MenuItem>
+                ))}
+              </MuiSelect>
+            </FormControl>
+          </Grid>
+          <Grid item xs={3}>
+            <MuiButton
+              variant="outlined"
+              onClick={() => setCustomMoodDialog(true)}
+              startIcon={<AddIcon />}
+              fullWidth
+              sx={outlinedButtonStyle}
+            >
+              Add New
+            </MuiButton>
+          </Grid>
+        </Grid>
+
+        {/* Intensity and Add Symptom Row */}
+        <Grid container spacing={2} alignItems="center" mb={3}>
+          <Grid item xs={9}>
             <Typography variant="body2" color="textSecondary" gutterBottom>
               Intensity: {intensity}
             </Typography>
@@ -267,18 +324,25 @@ const SymptomTracker = () => {
               min={1}
               step={1}
               valueLabelDisplay="auto"
+              sx={{
+                color: themeColors.primary,
+                '& .MuiSlider-thumb': {
+                  '&:hover, &.Mui-focusVisible': {
+                    boxShadow: `0px 0px 0px 8px ${themeColors.secondary}`,
+                  }
+                }
+              }}
             />
           </Grid>
-
-          <Grid item xs={12} sm={2}>
+          <Grid item xs={3}>
             <MuiButton
               variant="contained"
-              color="primary"
               startIcon={<AddCircleOutline />}
               onClick={handleAddSymptom}
               fullWidth
+              sx={buttonStyle}
             >
-              Add
+              Add Symptom
             </MuiButton>
           </Grid>
         </Grid>
@@ -291,34 +355,17 @@ const SymptomTracker = () => {
               label={`${symptom.name} (${symptom.intensity}/5)`}
               onDelete={() => handleRemoveSymptom(symptom.name)}
               deleteIcon={<DeleteOutline />}
-              sx={{ mr: 1, mb: 1 }}
+              sx={{ 
+                mr: 1, 
+                mb: 1,
+                backgroundColor: themeColors.secondary,
+                color: themeColors.primary,
+                '& .MuiChip-deleteIcon': {
+                  color: themeColors.primary,
+                }
+              }}
             />
           ))}
-        </Box>
-
-        {/* Mood Selection */}
-        <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
-          <FormControl fullWidth>
-            <InputLabel>Select Mood</InputLabel>
-            <MuiSelect
-              value={mood}
-              onChange={(e) => setMood(e.target.value)}
-              label="Select Mood"
-            >
-              {availableMoods.map(m => (
-                <MenuItem key={m} value={m}>
-                  {m}
-                </MenuItem>
-              ))}
-            </MuiSelect>
-          </FormControl>
-          <MuiButton
-            variant="outlined"
-            onClick={() => setCustomMoodDialog(true)}
-            startIcon={<AddIcon />}
-          >
-            Add New
-          </MuiButton>
         </Box>
 
         {/* Notes */}
@@ -335,11 +382,11 @@ const SymptomTracker = () => {
 
         <MuiButton
           variant="contained"
-          color="primary"
           startIcon={<SaveIcon />}
           onClick={handleSave}
           disabled={symptoms.length === 0}
           fullWidth
+          sx={buttonStyle}
         >
           Save Entry
         </MuiButton>
@@ -358,7 +405,7 @@ const SymptomTracker = () => {
               <Line 
                 type="monotone" 
                 dataKey="symptoms.length" 
-                stroke="#ec4899" 
+                stroke={themeColors.primary}
                 name="Number of Symptoms"
               />
             </LineChart>
@@ -373,7 +420,16 @@ const SymptomTracker = () => {
           {historicalData.slice(0, 5).map((entry) => (
             <Box 
               key={entry.id}
-              sx={{ borderBottom: '1px solid #e0e0e0', pb: 2, mb: 2 }}
+              sx={{ 
+                borderBottom: '1px solid #e0e0e0', 
+                pb: 2, 
+                mb: 2,
+                '&:last-child': {
+                  borderBottom: 'none',
+                  mb: 0,
+                  pb: 0
+                }
+              }}
             >
               <Box sx={{ 
                 display: 'flex', 
@@ -388,8 +444,12 @@ const SymptomTracker = () => {
                 <IconButton 
                   onClick={() => handleDeleteClick(entry)}
                   size="small"
-                  color="error"
-                  aria-label="delete entry"
+                  sx={{ 
+                    color: themeColors.primary,
+                    '&:hover': {
+                      backgroundColor: themeColors.secondary
+                    }
+                  }}
                 >
                   <DeleteOutline />
                 </IconButton>
@@ -400,7 +460,10 @@ const SymptomTracker = () => {
                     key={idx}
                     label={`${symptom.name} (${symptom.intensity}/5)`}
                     size="small"
-                    color="secondary"
+                    sx={{
+                      backgroundColor: themeColors.secondary,
+                      color: themeColors.primary
+                    }}
                   />
                 ))}
               </Box>
@@ -432,10 +495,22 @@ const SymptomTracker = () => {
           />
         </DialogContent>
         <DialogActions>
-          <MuiButton onClick={() => setCustomSymptomDialog(false)}>
+          <MuiButton 
+            onClick={() => setCustomSymptomDialog(false)}
+            sx={{ color: 'gray' }}
+          >
             Cancel
           </MuiButton>
-          <MuiButton onClick={handleAddCustomSymptom} variant="contained">
+          <MuiButton 
+            onClick={handleAddCustomSymptom} 
+            variant="contained"
+            sx={{
+              backgroundColor: themeColors.primary,
+              '&:hover': {
+                backgroundColor: themeColors.hover,
+              }
+            }}
+          >
             Add
           </MuiButton>
         </DialogActions>
@@ -459,10 +534,22 @@ const SymptomTracker = () => {
           />
         </DialogContent>
         <DialogActions>
-          <MuiButton onClick={() => setCustomMoodDialog(false)}>
+          <MuiButton 
+            onClick={() => setCustomMoodDialog(false)}
+            sx={{ color: 'gray' }}
+          >
             Cancel
           </MuiButton>
-          <MuiButton onClick={handleAddCustomMood} variant="contained">
+          <MuiButton 
+            onClick={handleAddCustomMood} 
+            variant="contained"
+            sx={{
+              backgroundColor: themeColors.primary,
+              '&:hover': {
+                backgroundColor: themeColors.hover,
+              }
+            }}
+          >
             Add
           </MuiButton>
         </DialogActions>
@@ -482,21 +569,27 @@ const SymptomTracker = () => {
         <DialogActions>
           <MuiButton 
             onClick={() => setDeleteDialogOpen(false)}
-            color="primary"
+            sx={{ color: 'gray' }}
           >
             Cancel
           </MuiButton>
           <MuiButton 
-  onClick={handleDeleteConfirm}
-  color="error"
-  variant="contained"
->
-  Delete
-</MuiButton>
-</DialogActions>
-</Dialog>
-</Container>
-);
+            onClick={handleDeleteConfirm}
+            sx={{
+              backgroundColor: themeColors.primary,
+              color: 'white',
+              '&:hover': {
+                backgroundColor: themeColors.hover,
+              }
+            }}
+            variant="contained"
+          >
+            Delete
+          </MuiButton>
+        </DialogActions>
+      </Dialog>
+    </Container>
+  );
 };
 
 export default SymptomTracker;
