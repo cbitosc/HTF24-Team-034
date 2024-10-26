@@ -1,15 +1,37 @@
-// src/components/Dashboard.jsx
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, Bell, Heart, LineChart, BookOpen, LogOut } from 'lucide-react';
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Container,
+  Grid,
+  Paper,
+  Tabs,
+  Tab,
+  Chip,
+  IconButton,
+  Box,
+} from '@mui/material';
+import {
+  CalendarToday,
+  AccessTime,
+  Notifications,
+  Favorite,
+  BarChart,
+  MenuBook,
+  ExitToApp,
+} from '@mui/icons-material';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 
 const Dashboard = () => {
-  const [activeTab, setActiveTab] = useState('calendar');
+  const [activeTab, setActiveTab] = useState(0);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
@@ -42,125 +64,191 @@ const Dashboard = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-pink-50 to-purple-50">
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+        height: '100vh',
+        overflow: 'hidden',
+        bgcolor: 'background.default'
+      }}
+    >
       {/* Navigation Bar */}
-      <nav className="w-full bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex-shrink-0 flex items-center">
-              <Heart className="h-8 w-8 text-pink-500" />
-              <span className="ml-2 text-xl font-semibold text-gray-800">
-                CycleCare
-              </span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                Welcome, {user.displayName || user.email}
-              </span>
-              <button className="text-gray-600 hover:text-pink-500">
-                <Bell className="h-6 w-6" />
-              </button>
-              <button 
-                onClick={handleLogout}
-                className="flex items-center text-gray-600 hover:text-pink-500"
+      <AppBar position="sticky" elevation={1}>
+        <Toolbar>
+          <Favorite sx={{ mr: 2, color: 'pink' }} />
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            CycleCare
+          </Typography>
+          <Typography variant="body1" sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
+            Welcome, {user.displayName || user.email}
+          </Typography>
+          <IconButton color="inherit">
+            <Notifications />
+          </IconButton>
+          <IconButton color="inherit" onClick={handleLogout}>
+            <ExitToApp />
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+
+      {/* Main Content Area */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          overflowY: 'auto',
+          height: 'calc(100vh - 64px)', // Subtract AppBar height
+          bgcolor: '#faf5ff', // Light purple background
+        }}
+      >
+        <Container 
+          maxWidth="lg" 
+          sx={{ 
+            py: 4,
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          {/* Quick Stats */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12} sm={6} md={4}>
+              <Paper 
+                elevation={2}
+                sx={{ 
+                  p: 3, 
+                  height: '100%',
+                  backgroundImage: 'linear-gradient(to bottom right, #fff, #fdf2f8)'
+                }}
               >
-                <LogOut className="h-6 w-6" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <CalendarToday sx={{ mr: 2, color: 'pink' }} />
+                  <div>
+                    <Typography variant="body2" color="textSecondary">Next Period</Typography>
+                    <Typography variant="h6">{userData.nextPeriod}</Typography>
+                  </div>
+                </Box>
+              </Paper>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={4}>
+              <Paper 
+                elevation={2}
+                sx={{ 
+                  p: 3, 
+                  height: '100%',
+                  backgroundImage: 'linear-gradient(to bottom right, #fff, #f3e8ff)'
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <AccessTime sx={{ mr: 2, color: 'purple' }} />
+                  <div>
+                    <Typography variant="body2" color="textSecondary">Cycle Length</Typography>
+                    <Typography variant="h6">{userData.cycleLength} days</Typography>
+                  </div>
+                </Box>
+              </Paper>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={4}>
+              <Paper 
+                elevation={2}
+                sx={{ 
+                  p: 3, 
+                  height: '100%',
+                  backgroundImage: 'linear-gradient(to bottom right, #fff, #e0f2fe)'
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <BarChart sx={{ mr: 2, color: 'blue' }} />
+                  <div>
+                    <Typography variant="body2" color="textSecondary">Last Period</Typography>
+                    <Typography variant="h6">{userData.lastPeriod}</Typography>
+                  </div>
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
 
-      {/* Main Content */}
-      <main className="w-full max-w-7xl mx-auto px-4 py-8">
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <Calendar className="h-8 w-8 text-pink-500" />
-              <div className="ml-4">
-                <p className="text-sm text-gray-500">Next Period</p>
-                <p className="text-lg font-semibold">{userData.nextPeriod}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <Clock className="h-8 w-8 text-purple-500" />
-              <div className="ml-4">
-                <p className="text-sm text-gray-500">Cycle Length</p>
-                <p className="text-lg font-semibold">{userData.cycleLength} days</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <LineChart className="h-8 w-8 text-blue-500" />
-              <div className="ml-4">
-                <p className="text-sm text-gray-500">Last Period</p>
-                <p className="text-lg font-semibold">{userData.lastPeriod}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="flex space-x-4 mb-6">
-          {['calendar', 'symptoms', 'insights', 'education'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-lg capitalize ${
-                activeTab === tab
-                  ? 'bg-pink-500 text-white'
-                  : 'bg-white text-gray-600 hover:bg-pink-50'
-              }`}
+          {/* Tab Navigation */}
+          <Paper 
+            elevation={2}
+            sx={{ 
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}
+          >
+            <Tabs
+              value={activeTab}
+              onChange={(e, newValue) => setActiveTab(newValue)}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{ 
+                borderBottom: 1, 
+                borderColor: 'divider',
+                bgcolor: 'background.paper'
+              }}
             >
-              {tab}
-            </button>
-          ))}
-        </div>
+              <Tab label="Calendar" />
+              <Tab label="Symptoms" />
+              <Tab label="Insights" />
+              <Tab label="Education" />
+            </Tabs>
 
-        {/* Main Content Area */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          {activeTab === 'calendar' && (
-            <div className="text-center p-8">
-              <p className="text-gray-500">Calendar View Coming Soon</p>
-            </div>
-          )}
-          
-          {activeTab === 'symptoms' && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold mb-4">Recent Symptoms</h3>
-              <div className="flex flex-wrap gap-2">
-                {userData.symptoms.map((symptom, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm"
-                  >
-                    {symptom}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {activeTab === 'insights' && (
-            <div className="text-center p-8">
-              <p className="text-gray-500">Insights Coming Soon</p>
-            </div>
-          )}
-          
-          {activeTab === 'education' && (
-            <div className="text-center p-8">
-              <p className="text-gray-500">Educational Content Coming Soon</p>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
+            {/* Tab Content */}
+            <Box sx={{ 
+              flexGrow: 1,
+              overflowY: 'auto',
+              p: 3,
+              bgcolor: 'background.paper'
+            }}>
+              {activeTab === 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <Typography color="textSecondary">Calendar View Coming Soon</Typography>
+                </Box>
+              )}
+
+              {activeTab === 1 && (
+                <div>
+                  <Typography variant="h6" gutterBottom>Recent Symptoms</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {userData.symptoms.map((symptom, index) => (
+                      <Chip 
+                        key={index} 
+                        label={symptom} 
+                        sx={{
+                          bgcolor: 'pink.50',
+                          color: 'pink.700',
+                          '&:hover': {
+                            bgcolor: 'pink.100'
+                          }
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </div>
+              )}
+
+              {activeTab === 2 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <Typography color="textSecondary">Insights Coming Soon</Typography>
+                </Box>
+              )}
+
+              {activeTab === 3 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <Typography color="textSecondary">Educational Content Coming Soon</Typography>
+                </Box>
+              )}
+            </Box>
+          </Paper>
+        </Container>
+      </Box>
+    </Box>
   );
 };
 
