@@ -88,19 +88,30 @@ const generateDummyData = () => {
   const threeMonthsAgo = subMonths(today, 3);
   const daysInterval = eachDayOfInterval({ start: threeMonthsAgo, end: subDays(today, 1) });
   
-  return daysInterval.map(date => ({
-    id: `dummy-${format(date, 'yyyy-MM-dd')}`,
-    date: format(date, 'MMM dd'),
-    fullDate: date,
-    timestamp: Timestamp.fromDate(date),
-    symptoms: Array(Math.floor(Math.random() * 4) + 1).fill(null).map(() => ({
+  const generateNote = (symptoms, mood) => {
+    const intensityDescriptor = symptoms[0].intensity > 3 ? "severe" : "mild";
+    const timeOfDay = ["morning", "afternoon", "evening"][Math.floor(Math.random() * 3)];
+    return `Experiencing ${intensityDescriptor} ${symptoms[0].name.toLowerCase()} in the ${timeOfDay}. Overall feeling ${mood.toLowerCase()}.`;
+  };
+
+  return daysInterval.map(date => {
+    const dailySymptoms = Array(Math.floor(Math.random() * 4) + 1).fill(null).map(() => ({
       name: DEFAULT_SYMPTOMS[Math.floor(Math.random() * DEFAULT_SYMPTOMS.length)],
       intensity: Math.floor(Math.random() * 5) + 1
-    })),
-    mood: DEFAULT_MOODS[Math.floor(Math.random() * DEFAULT_MOODS.length)],
-    notes: `Sample entry for ${format(date, 'MMM dd')}`,
-    userId: auth.currentUser?.uid || 'dummy-user'
-  }));
+    }));
+    const dailyMood = DEFAULT_MOODS[Math.floor(Math.random() * DEFAULT_MOODS.length)];
+
+    return {
+      id: `dummy-${format(date, 'yyyy-MM-dd')}`,
+      date: format(date, 'MMM dd'),
+      fullDate: date,
+      timestamp: Timestamp.fromDate(date),
+      symptoms: dailySymptoms,
+      mood: dailyMood,
+      notes: generateNote(dailySymptoms, dailyMood),
+      userId: auth.currentUser?.uid || 'dummy-user'
+    };
+  });
 };
 
 const SymptomTracker = () => {
@@ -218,13 +229,18 @@ const SymptomTracker = () => {
         await deleteDoc(docRef);
       }
       
-      setHistoricalData(prevData => 
-        prevData.filter(entry => entry.id !== entryToDelete.id)
-      );
+      // Update both historicalData and monthlyData
+      const updatedHistorical = historicalData.filter(entry => entry.id !== entryToDelete.id);
+      setHistoricalData(updatedHistorical);
+      
+      const updatedMonthly = monthlyData.map(month => ({
+        ...month,
+        data: month.data.filter(entry => entry.id !== entryToDelete.id)
+      }));
+      setMonthlyData(updatedMonthly);
       
       setDeleteDialogOpen(false);
       setEntryToDelete(null);
-      await fetchSymptomHistory();
     } catch (error) {
       console.error('Error deleting entry:', error);
     }
@@ -237,24 +253,39 @@ const SymptomTracker = () => {
     }
 
     try {
-      const userId = auth.currentUser.uid;
+      const today = new Date(2024, 9, 27); // October 27, 2024
       const newEntry = {
-        userId,
+        userId: auth.currentUser.uid,
         symptoms,
         mood,
         notes,
-        timestamp: serverTimestamp(),
-        date: format(new Date(), 'MMM dd'),
-        fullDate: new Date()
+        timestamp: Timestamp.fromDate(today),
+        date: format(today, 'MMM dd'),
+        fullDate: today,
+        id: `dummy-${format(today, 'yyyy-MM-dd')}-${Date.now()}`
       };
 
-      const docRef = await addDoc(collection(db, 'symptomLogs'), newEntry);
+      // Update monthlyData
+      const monthKey = format(today, 'yyyy-MM');
+      const updatedMonthly = monthlyData.map(month => {
+        if (month.month === monthKey) {
+          return {
+            ...month,
+            data: [newEntry, ...month.data]
+          };
+        }
+        return month;
+      });
+
+      // Update state
+      setMonthlyData(updatedMonthly);
+      setHistoricalData([newEntry, ...historicalData]);
       
+      // Reset form
       setSymptoms([]);
       setMood("");
       setNotes("");
       
-      await fetchSymptomHistory();
     } catch (error) {
       console.error('Error saving symptoms:', error);
     }
@@ -404,8 +435,7 @@ const SymptomTracker = () => {
               startIcon={<AddCircleOutline />}
               onClick={handleAddSymptom}
               fullWidth
-              sx={buttonStyle}
-            >
+              sx={buttonStyle}>
               Add Symptom
             </MuiButton>
           </Grid>
