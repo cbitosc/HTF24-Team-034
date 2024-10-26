@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { getFirestore, enableIndexedDbPersistence, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCcA9Xw2jSEDlBw-HnVdegz1xmQ_acdE4I",
@@ -41,4 +41,4 @@ auth.onAuthStateChanged((user) => {
   console.error('Auth state change error:', error);
 });
 
-export { app, auth, analytics, db };
+export { app, auth, analytics, db, collection, getDocs, addDoc, updateDoc, deleteDoc, doc };
