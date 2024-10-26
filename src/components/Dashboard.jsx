@@ -29,6 +29,8 @@ import { signOut } from 'firebase/auth';
 
 import SymptomTracker from './SymptomTracker';
 import Insights from './Insights';
+import HealthAndMedication from './HealthandMedication';
+
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [user, setUser] = useState(null);
@@ -198,7 +200,7 @@ const Dashboard = () => {
               <Tab label="Calendar" />
               <Tab label="Symptoms" />
               <Tab label="Insights" />
-              <Tab label="Education" />
+              <Tab label="Health and Medication" />
             </Tabs>
 
             {/* Tab Content */}
@@ -245,7 +247,8 @@ const Dashboard = () => {
 
               {activeTab === 3 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                  <Typography color="textSecondary">Educational Content Coming Soon</Typography>
+                  {/* <Typography color="textSecondary">Health and Medication Content Coming Soon</Typography> */}
+                  <HealthAndMedication />
                 </Box>
               )}
             </Box>

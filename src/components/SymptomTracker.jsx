@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { db, auth } from '../firebase';
@@ -226,7 +227,7 @@ const SymptomTracker = () => {
     <Container maxWidth="md" sx={{ my: 4 }}>
       {/* Symptom Input Section */}
       <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>Track Today's Symptoms</Typography>
+        <Typography variant="h6" gutterBottom>Track Today&apos;s Symptoms</Typography>
         
         <Grid container spacing={2} mb={3}>
           <Grid item xs={12} sm={6}>
