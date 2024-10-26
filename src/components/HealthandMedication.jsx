@@ -21,6 +21,10 @@ import {
   useMediaQuery,
   Fade,
   Slide,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import {
   AlertCircle,
@@ -123,13 +127,36 @@ const HealthAndMedication = () => {
     setSymptoms(symptoms.filter(symptom => symptom.id !== id));
   };
 
+  const getNextMedication = () => {
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+
+    let nextMed = null;
+    let minDiff = Infinity;
+
+    medications.forEach(med => {
+      const [medHour, medMinute] = med.time.split(':').map(Number);
+      const medTime = medHour * 60 + medMinute;
+      const diff = medTime - currentTime;
+
+      if (diff > 0 && diff < minDiff) {
+        minDiff = diff;
+        nextMed = med;
+      }
+    });
+
+    return nextMed;
+  };
+
+  const nextMedication = getNextMedication();
+
   return (
     <Container maxWidth="md" sx={{ my: 4 }}>
       {/* Reminder Card */}
       <Fade in={true} timeout={1000}>
         <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', bgcolor: 'primary.light', color: 'primary.contrastText', borderRadius: 2, boxShadow: theme.shadows[4] }}>
           <AlertCircle size={24} style={{ marginRight: theme.spacing(1) }} />
-          <Typography variant="body1">Next medication: Prenatal Vitamins in 1 hour</Typography>
+          <Typography variant="body1">Next medication: {nextMedication ? `${nextMedication.name} in ${Math.floor(nextMedication.time.split(':')[0] - new Date().getHours())} hour(s)` : 'No upcoming medications'}</Typography>
         </Paper>
       </Fade>
 
@@ -174,53 +201,6 @@ const HealthAndMedication = () => {
         </Paper>
       </Fade>
 
-      {/* Symptoms Section */}
-      <Fade in={true} timeout={1000}>
-        <Paper sx={{ p: 2, mt: 2, borderRadius: 2, boxShadow: theme.shadows[4] }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="h6" sx={{ color: theme.palette.secondary.main }}>Symptoms Tracker</Typography>
-            <IconButton color="primary" onClick={() => setShowAddSymptom(true)}>
-              <Plus size={20} />
-            </IconButton>
-          </Box>
-          <List>
-            {symptoms.map(symptom => (
-              <Slide key={symptom.id} direction="up" in={true} timeout={500}>
-                <ListItem sx={{ py: 2, '&:hover': { bgcolor: 'action.hover' } }}>
-                  <ListItemText
-                    primary={
-                      <Box display="flex" alignItems="center">
-                        <Typography variant="body1" sx={{ mr: 1 }}>
-                          {symptom.type}
-                        </Typography>
-                        <Chip label={symptom.severity} color={severityColors[symptom.severity]} size="small" />
-                      </Box>
-                    }
-                    secondary={
-                      <>
-                        <Typography variant="body2" color="textSecondary">
-                          Recorded at {symptom.time}
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {symptom.notes}
-                        </Typography>
-                      </>
-                    }
-                  />
-                  <Box>
-                    <IconButton size="small" onClick={() => handleEditSymptom(symptom)}>
-                      <Edit size={16} />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleDeleteSymptom(symptom.id)}>
-                      <Trash size={16} />
-                    </IconButton>
-                  </Box>
-                </ListItem>
-              </Slide>
-            ))}
-          </List>
-        </Paper>
-      </Fade>
 
       {/* Add New Medication Dialog */}
       <Dialog open={showAddMed} onClose={() => setShowAddMed(false)} fullScreen={fullScreen}>
@@ -248,19 +228,29 @@ const HealthAndMedication = () => {
             onChange={(e) => setNewMed({ ...newMed, dosage: e.target.value })}
             fullWidth
           />
-          <TextField
-            margin="dense"
-            label="Frequency"
-            value={newMed.frequency}
-            onChange={(e) => setNewMed({ ...newMed, frequency: e.target.value })}
-            fullWidth
-          />
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Frequency</InputLabel>
+            <Select
+              value={newMed.frequency}
+              onChange={(e) => setNewMed({ ...newMed, frequency: e.target.value })}
+              label="Frequency"
+            >
+              <MenuItem value="Daily">Daily</MenuItem>
+              <MenuItem value="Weekly">Weekly</MenuItem>
+              <MenuItem value="Monthly">Monthly</MenuItem>
+              <MenuItem value="As Needed">As Needed</MenuItem>
+            </Select>
+          </FormControl>
           <TextField
             margin="dense"
             label="Time"
+            type="time"
             value={newMed.time}
             onChange={(e) => setNewMed({ ...newMed, time: e.target.value })}
             fullWidth
+            InputLabelProps={{
+              shrink: true,
+            }}
           />
           <TextField
             margin="dense"
@@ -301,19 +291,28 @@ const HealthAndMedication = () => {
             onChange={(e) => setNewSymptom({ ...newSymptom, type: e.target.value })}
             fullWidth
           />
-          <TextField
-            margin="dense"
-            label="Severity"
-            value={newSymptom.severity}
-            onChange={(e) => setNewSymptom({ ...newSymptom, severity: e.target.value })}
-            fullWidth
-          />
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Severity</InputLabel>
+            <Select
+              value={newSymptom.severity}
+              onChange={(e) => setNewSymptom({ ...newSymptom, severity: e.target.value })}
+              label="Severity"
+            >
+              <MenuItem value="Mild">Mild</MenuItem>
+              <MenuItem value="Moderate">Moderate</MenuItem>
+              <MenuItem value="Severe">Severe</MenuItem>
+            </Select>
+          </FormControl>
           <TextField
             margin="dense"
             label="Time"
+            type="time"
             value={newSymptom.time}
             onChange={(e) => setNewSymptom({ ...newSymptom, time: e.target.value })}
             fullWidth
+            InputLabelProps={{
+              shrink: true,
+            }}
           />
           <TextField
             margin="dense"
