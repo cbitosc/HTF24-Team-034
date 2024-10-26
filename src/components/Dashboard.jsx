@@ -26,8 +26,9 @@ import {
 } from '@mui/icons-material';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
-import SymptomTracker from './SymptomTracker';
 
+import SymptomTracker from './SymptomTracker';
+import Insights from './Insights';
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [user, setUser] = useState(null);
@@ -237,7 +238,8 @@ const Dashboard = () => {
 
               {activeTab === 2 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                  <Typography color="textSecondary">Insights Coming Soon</Typography>
+                  {/* <Typography color="textSecondary">Insights Coming Soon</Typography> */}
+                  <Insights />
                 </Box>
               )}
 
