@@ -5,7 +5,7 @@ import {
   IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, Card, CardContent, Select,
   MenuItem, FormControl, InputLabel, Stack,
-  Slider, Alert
+  Slider, Alert, Tooltip
 } from '@mui/material';
 import {
   ChevronLeft, ChevronRight, CalendarToday,
@@ -25,10 +25,10 @@ const CycleCalendar = () => {
 
   // Cycle phases
   const CYCLE_PHASES = {
-    MENSTRUAL: { name: 'Menstrual', color: '#ffcdd2', description: 'Bleeding phase' },
-    FOLLICULAR: { name: 'Follicular', color: '#fff3e0', description: 'Body preparing for ovulation' },
-    OVULATION: { name: 'Ovulation', color: '#f8bbd0', description: 'Most fertile period' },
-    LUTEAL: { name: 'Luteal', color: '#e1f5fe', description: 'Post-ovulation phase' }
+    MENSTRUAL: { name: 'Menstrual', color: '#ff8a80', description: 'Bleeding phase' },
+    FOLLICULAR: { name: 'Follicular', color: '#ffcc80', description: 'Body preparing for ovulation' },
+    OVULATION: { name: 'Ovulation', color: '#ff80ab', description: 'Most fertile period' },
+    LUTEAL: { name: 'Luteal', color: '#80d8ff', description: 'Post-ovulation phase' }
   };
 
   // Flow levels
@@ -57,11 +57,11 @@ const CycleCalendar = () => {
     const daysSinceLastPeriod = Math.floor((date - lastPeriod) / (1000 * 60 * 60 * 24));
     const cycleDay = (daysSinceLastPeriod % cycleData.cycleLength) + 1;
 
-    if (cycleDay <= 5) {
+    if (cycleDay <= cycleData.periodLength) {
       return CYCLE_PHASES.MENSTRUAL;
-    } else if (cycleDay <= 13) {
+    } else if (cycleDay <= cycleData.cycleLength - 14) {
       return CYCLE_PHASES.FOLLICULAR;
-    } else if (cycleDay <= 15) {
+    } else if (cycleDay <= cycleData.cycleLength - 12) {
       return CYCLE_PHASES.OVULATION;
     } else {
       return CYCLE_PHASES.LUTEAL;
@@ -146,11 +146,12 @@ const CycleCalendar = () => {
             <Typography variant="subtitle1" gutterBottom>Cycle Phases</Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               {Object.values(CYCLE_PHASES).map(phase => (
-                <Chip
-                  key={phase.name}
-                  label={phase.name}
-                  sx={{ bgcolor: phase.color, mb: 1 }}
-                />
+                <Tooltip key={phase.name} title={phase.description}>
+                  <Chip
+                    label={phase.name}
+                    sx={{ bgcolor: phase.color, mb: 1 }}
+                  />
+                </Tooltip>
               ))}
             </Stack>
           </Box>
@@ -192,10 +193,14 @@ const CycleCalendar = () => {
                     {dayData && (
                       <Box sx={{ mt: 1 }}>
                         {dayData.flow !== 'none' && (
-                          <Water sx={{ color: 'primary.main', fontSize: 16 }} />
+                          <Tooltip title={`Flow: ${dayData.flow}`}>
+                            <Water sx={{ color: 'primary.main', fontSize: 16 }} />
+                          </Tooltip>
                         )}
                         {dayData.symptoms.length > 0 && (
-                          <LocalHospital sx={{ color: 'error.main', fontSize: 16 }} />
+                          <Tooltip title={`Symptoms: ${dayData.symptoms.join(', ')}`}>
+                            <LocalHospital sx={{ color: 'error.main', fontSize: 16 }} />
+                          </Tooltip>
                         )}
                       </Box>
                     )}
@@ -238,14 +243,15 @@ const CycleCalendar = () => {
                   <Typography variant="subtitle1" gutterBottom>Symptoms</Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                     {SYMPTOMS.map(symptom => (
-                      <Chip
-                        key={symptom.value}
-                        label={symptom.label}
-                        icon={<symptom.icon />}
-                        onClick={() => handleSymptomToggle(symptom.value)}
-                        color={selectedSymptoms.includes(symptom.value) ? "primary" : "default"}
-                        sx={{ m: 0.5 }}
-                      />
+                      <Tooltip key={symptom.value} title={symptom.label}>
+                        <Chip
+                          label={symptom.label}
+                          icon={<symptom.icon />}
+                          onClick={() => handleSymptomToggle(symptom.value)}
+                          color={selectedSymptoms.includes(symptom.value) ? "primary" : "default"}
+                          sx={{ m: 0.5 }}
+                        />
+                      </Tooltip>
                     ))}
                   </Box>
                 </Box>
