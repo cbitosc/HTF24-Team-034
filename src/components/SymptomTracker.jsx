@@ -1,5 +1,3 @@
-/* eslint-disable no-unused-vars */
-// src/components/SymptomTracker.jsx
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { db, auth } from '../firebase';
@@ -10,7 +8,9 @@ import {
   where, 
   getDocs,
   orderBy,
-  serverTimestamp 
+  serverTimestamp,
+  doc,
+  deleteDoc
 } from 'firebase/firestore';
 import {
   Container,
@@ -71,14 +71,17 @@ const MOODS = [
 ];
 
 const SymptomTracker = () => {
+  // Initialize all state variables properly
   const [symptoms, setSymptoms] = useState([]);
   const [selectedSymptom, setSelectedSymptom] = useState("");
   const [intensity, setIntensity] = useState([3]);
   const [mood, setMood] = useState("");
   const [notes, setNotes] = useState("");
-  const [historicalData, setHistoricalData] = useState([]);
+  const [historicalData, setHistoricalData] = useState([]); // Initialize as empty array
   const [isLoading, setIsLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState(null);
 
   useEffect(() => {
     fetchSymptomHistory();
@@ -86,6 +89,12 @@ const SymptomTracker = () => {
 
   const fetchSymptomHistory = async () => {
     try {
+      if (!auth.currentUser) {
+        console.log('No user logged in');
+        setIsLoading(false);
+        return;
+      }
+
       const userId = auth.currentUser.uid;
       const q = query(
         collection(db, 'symptomLogs'),
@@ -97,7 +106,7 @@ const SymptomTracker = () => {
       const data = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        date: format(doc.data().timestamp.toDate(), 'MMM dd')
+        date: doc.data().timestamp ? format(doc.data().timestamp.toDate(), 'MMM dd') : 'No date'
       }));
 
       setHistoricalData(data);
@@ -116,6 +125,7 @@ const SymptomTracker = () => {
       }]);
       setSelectedSymptom("");
       setIntensity([3]);
+      setOpenDialog(false);
     }
   };
 
@@ -123,7 +133,36 @@ const SymptomTracker = () => {
     setSymptoms(symptoms.filter(s => s.name !== symptomName));
   };
 
+  const handleDeleteClick = (entry) => {
+    setEntryToDelete(entry);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!entryToDelete) return;
+
+    try {
+      const docRef = doc(db, 'symptomLogs', entryToDelete.id);
+      await deleteDoc(docRef);
+      
+      // Update the UI by removing the deleted entry
+      setHistoricalData(prevData => 
+        prevData.filter(entry => entry.id !== entryToDelete.id)
+      );
+      
+      setDeleteDialogOpen(false);
+      setEntryToDelete(null);
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+    }
+  };
+
   const handleSave = async () => {
+    if (!auth.currentUser) {
+      console.log('No user logged in');
+      return;
+    }
+
     try {
       const userId = auth.currentUser.uid;
       await addDoc(collection(db, 'symptomLogs'), {
@@ -150,11 +189,19 @@ const SymptomTracker = () => {
     return historicalData.slice(0, 7).reverse();
   };
 
+  if (isLoading) {
+    return (
+      <Container maxWidth="md" sx={{ my: 4 }}>
+        <Typography>Loading...</Typography>
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth="md" sx={{ my: 4 }}>
       {/* Symptom Input Section */}
       <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>Track Today&apos;s Symptoms</Typography>
+        <Typography variant="h6" gutterBottom>Track Today's Symptoms</Typography>
         
         <Grid container spacing={2} mb={3}>
           <Grid item xs={12} sm={6}>
@@ -215,7 +262,7 @@ const SymptomTracker = () => {
         </Box>
 
         {/* Mood Selection */}
-        <FormControl fullWidth mb={3}>
+        <FormControl fullWidth sx={{ mb: 3 }}>
           <InputLabel>Select Mood</InputLabel>
           <MuiSelect
             value={mood}
@@ -239,7 +286,7 @@ const SymptomTracker = () => {
           rows={3}
           fullWidth
           variant="outlined"
-          mb={3}
+          sx={{ mb: 3 }}
         />
 
         <MuiButton
@@ -284,9 +331,24 @@ const SymptomTracker = () => {
               key={entry.id}
               sx={{ borderBottom: '1px solid #e0e0e0', pb: 2, mb: 2 }}
             >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="subtitle1">{entry.date}</Typography>
-                <Typography variant="body2" color="textSecondary">{entry.mood}</Typography>
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                mb: 1 
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="subtitle1">{entry.date}</Typography>
+                  <Typography variant="body2" color="textSecondary">{entry.mood}</Typography>
+                </Box>
+                <IconButton 
+                  onClick={() => handleDeleteClick(entry)}
+                  size="small"
+                  color="error"
+                  aria-label="delete entry"
+                >
+                  <DeleteOutline />
+                </IconButton>
               </Box>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
                 {entry.symptoms.map((symptom, idx) => (
@@ -299,49 +361,39 @@ const SymptomTracker = () => {
                 ))}
               </Box>
               {entry.notes && (
-                <Typography variant="body2" color="textSecondary">{entry.notes}</Typography>
+                <Typography variant="body2" color="textSecondary">
+                  {entry.notes}
+                </Typography>
               )}
             </Box>
           ))}
         </Box>
       </Paper>
 
-      {/* Dialog for Adding Symptoms */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <DialogTitle>Add Symptom</DialogTitle>
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Delete Entry</DialogTitle>
         <DialogContent>
-          <FormControl fullWidth>
-            <InputLabel>Select Symptom</InputLabel>
-            <MuiSelect
-              value={selectedSymptom}
-              onChange={(e) => setSelectedSymptom(e.target.value)}
-              label="Select Symptom"
-            >
-              {SYMPTOMS.map(symptom => (
-                <MenuItem key={symptom} value={symptom}>
-                  {symptom}
-                </MenuItem>
-              ))}
-            </MuiSelect>
-          </FormControl>
-          <Typography variant="body2" color="textSecondary" gutterBottom>
-            Intensity: {intensity}
+          <Typography>
+            Are you sure you want to delete this entry? This action cannot be undone.
           </Typography>
-          <MuiSlider
-            value={intensity}
-            onChange={(e, newValue) => setIntensity(newValue)}
-            max={5}
-            min={1}
-            step={1}
-            valueLabelDisplay="auto"
-          />
         </DialogContent>
         <DialogActions>
-          <MuiButton onClick={() => setOpenDialog(false)} color="primary">
+          <MuiButton 
+            onClick={() => setDeleteDialogOpen(false)}
+            color="primary"
+          >
             Cancel
           </MuiButton>
-          <MuiButton onClick={handleAddSymptom} color="primary">
-            Add
+          <MuiButton 
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+          >
+            Delete
           </MuiButton>
         </DialogActions>
       </Dialog>
