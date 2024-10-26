@@ -26,6 +26,7 @@ import {
 } from '@mui/icons-material';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
+import SymptomTracker from './SymptomTracker';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
@@ -214,7 +215,7 @@ const Dashboard = () => {
 
               {activeTab === 1 && (
                 <div>
-                  <Typography variant="h6" gutterBottom>Recent Symptoms</Typography>
+                  {/* <Typography variant="h6" gutterBottom>Recent Symptoms</Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                     {userData.symptoms.map((symptom, index) => (
                       <Chip 
@@ -229,7 +230,8 @@ const Dashboard = () => {
                         }}
                       />
                     ))}
-                  </Box>
+                  </Box> */}
+                  <SymptomTracker />
                 </div>
               )}
 
