@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars */
+// eslint-disable-next-line no-unused-vars
 import React, { useState, useEffect } from 'react';
 import {
   Container,
@@ -75,6 +75,7 @@ const HealthAndMedication = () => {
   const [medications, setMedications] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentMed, setCurrentMed] = useState(null);
+  const [nextMedication, setNextMedication] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     dosage: '',
@@ -87,6 +88,109 @@ const HealthAndMedication = () => {
 
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
+
+  const getNextMedication = () => {
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    let nextMed = null;
+    let minTimeDiff = Infinity;
+
+    const calculateNextDose = (medication) => {
+      const [hours, minutes] = medication.time.split(':');
+      const now = new Date();
+      const nextDose = new Date(now);
+      nextDose.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      
+      if (nextDose < now) {
+        nextDose.setDate(nextDose.getDate() + 1);
+      }
+      
+      return nextDose;
+    };
+    
+    // Calculate nextDose for each medication
+    const updatedMedications = medications.map(med => ({
+      ...med,
+      nextDose: calculateNextDose(med)
+    }));
+    
+    updatedMedications.forEach(med => {
+      if (med.completed) return;
+
+      const [hours, minutes] = med.time.split(':');
+      const medTime = parseInt(hours) * 60 + parseInt(minutes);
+      
+      // Calculate time difference considering both today and tomorrow
+      let timeDiff = medTime - currentTime;
+      if (timeDiff < 0) {
+        // If the medication time has passed for today, consider it for tomorrow
+        timeDiff += 24 * 60; // Add 24 hours in minutes
+      }
+
+      if (timeDiff < minTimeDiff) {
+        minTimeDiff = timeDiff;
+        nextMed = { ...med, timeDiff };
+      }
+    });
+
+    return nextMed;
+  };
+
+  const updateNextMedication = () => {
+    const next = getNextMedication();
+    setNextMedication(next);
+  };
+
+  // Reset completion status at midnight
+  const resetCompletionStatus = async () => {
+    const updates = medications.map(async (med) => {
+      if (med.completed) {
+        await updateDoc(doc(db, 'medications', med.id), { completed: false });
+        return { ...med, completed: false };
+      }
+      return med;
+    });
+    
+    const updatedMeds = await Promise.all(updates);
+    setMedications(updatedMeds);
+  };
+
+  useEffect(() => {
+    const fetchMedications = async () => {
+      const querySnapshot = await getDocs(collection(db, 'medications'));
+      const meds = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMedications(meds);
+    };
+    fetchMedications();
+
+    // Set up midnight reset
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const timeUntilMidnight = tomorrow - now;
+
+    const midnightReset = setTimeout(() => {
+      resetCompletionStatus();
+      // Set up daily reset
+      setInterval(resetCompletionStatus, 24 * 60 * 60 * 1000);
+    }, timeUntilMidnight);
+
+    return () => clearTimeout(midnightReset);
+  }, []);
+
+  // Update next medication whenever medications change or time passes
+  useEffect(() => {
+    updateNextMedication();
+    const interval = setInterval(() => {
+      updateNextMedication();
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [medications]);
 
   const resetForm = () => {
     setFormData({
@@ -158,47 +262,9 @@ const HealthAndMedication = () => {
     }
   };
 
-  const getNextMedication = () => {
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    
-    return medications
-      .filter(med => !med.completed)
-      .reduce((next, med) => {
-        const [hours, minutes] = med.time.split(':');
-        const medMinutes = parseInt(hours) * 60 + parseInt(minutes);
-        const diff = medMinutes - currentMinutes;
-        
-        if (diff > 0 && (!next || diff < next.diff)) {
-          return { med, diff };
-        }
-        return next;
-      }, null)?.med;
-  };
-
-  useEffect(() => {
-    const fetchMedications = async () => {
-      const querySnapshot = await getDocs(collection(db, 'medications'));
-      const meds = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setMedications(meds);
-    };
-    fetchMedications();
-
-    const interval = setInterval(() => {
-      const nextMed = getNextMedication();
-      if (nextMed) {
-        setSnackbarMessage(`Reminder: Take ${nextMed.name} at ${nextMed.time}`);
-        setOpenSnackbar(true);
-      }
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [medications]);
-
   return (
     <ThemeProvider theme={periodTrackingTheme}>
       <Container maxWidth="md" sx={{ py: 4 }}>
-        {/* Rest of the component remains exactly the same */}
         {/* Reminder Banner */}
         <Fade in={true} timeout={1000}>
           <Paper 
@@ -219,15 +285,15 @@ const HealthAndMedication = () => {
             <Box display="flex" alignItems="center" gap={2}>
               <AlertIcon fontSize="large" />
               <Typography variant="h6" sx={{ fontWeight: 500 }}>
-                {getNextMedication() 
-                  ? `Next Medication: ${getNextMedication().name} at ${getNextMedication().time}`
+                {nextMedication 
+                  ? `Next Medication: ${nextMedication.name} at ${nextMedication.time}`
                   : 'No upcoming medications'}
               </Typography>
             </Box>
           </Paper>
         </Fade>
 
-        {/* Medications List */}
+        {/* Rest of the component remains the same */}
         <Fade in={true} timeout={1000}>
           <Paper 
             elevation={3}
@@ -333,7 +399,7 @@ const HealthAndMedication = () => {
                   color="text.secondary"
                   sx={{ textAlign: 'center', py: 4 }}
                 >
-                  No medications added yet. Click the "Add New" button to get started.
+                  No medications added yet. Click the &quot;Add New&quot; button to get started.
                 </Typography>
               )}
             </List>
