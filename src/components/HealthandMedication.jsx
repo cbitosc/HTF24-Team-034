@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-unused-vars
 import React, { useState, useEffect } from 'react';
 import {
   Container,
@@ -97,7 +98,26 @@ const HealthAndMedication = () => {
     let nextMed = null;
     let minTimeDiff = Infinity;
 
-    medications.forEach(med => {
+    const calculateNextDose = (medication) => {
+      const [hours, minutes] = medication.time.split(':');
+      const now = new Date();
+      const nextDose = new Date(now);
+      nextDose.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      
+      if (nextDose < now) {
+        nextDose.setDate(nextDose.getDate() + 1);
+      }
+      
+      return nextDose;
+    };
+    
+    // Calculate nextDose for each medication
+    const updatedMedications = medications.map(med => ({
+      ...med,
+      nextDose: calculateNextDose(med)
+    }));
+    
+    updatedMedications.forEach(med => {
       if (med.completed) return;
 
       const [hours, minutes] = med.time.split(':');
@@ -379,7 +399,7 @@ const HealthAndMedication = () => {
                   color="text.secondary"
                   sx={{ textAlign: 'center', py: 4 }}
                 >
-                  No medications added yet. Click the "Add New" button to get started.
+                  No medications added yet. Click the &quot;Add New&quot; button to get started.
                 </Typography>
               )}
             </List>

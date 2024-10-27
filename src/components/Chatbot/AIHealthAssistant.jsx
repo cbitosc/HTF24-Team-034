@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useRef, useEffect } from 'react';
 import {
     Box, Paper, Typography, TextField, IconButton, Card, CardContent,
@@ -23,6 +24,7 @@ const defaultTheme = {
     }
 };
 
+// eslint-disable-next-line react/prop-types
 const AIHealthAssistant = ({ medications = [], onShowMedReminder, theme = defaultTheme }) => {
     const [messages, setMessages] = useState([
         {

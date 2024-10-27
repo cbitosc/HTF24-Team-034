@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -11,19 +12,25 @@ import {
   Water, Mood, Spa, WbSunny, Stars, NightsStay, LocalHospital,
   TipsAndUpdates, FitnessCenter, Restaurant, Psychology
 } from '@mui/icons-material';
+import { getDocs, collection, onSnapshot } from 'firebase/firestore';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { db } from '../firebase'; // Import the db object
 
 import CycleCalendar from './CycleCalendar';
 import SymptomTracker from './SymptomTracker';
 import Insights from './Insights';
 import HealthAndMedication from './HealthandMedication';
+import NotificationSystem from './NotificationSystem';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [user, setUser] = useState(null);
   const [showTips, setShowTips] = useState(false);
   const [healthScore, setHealthScore] = useState(85);
+  const [medications, setMedications] = useState([]);
   const [dailyInsights, setDailyInsights] = useState({
     nutrition: [],
     exercise: [],
@@ -105,6 +112,28 @@ const Dashboard = () => {
       );
     }
   };
+
+  useEffect(() => {
+    const fetchMedications = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'medications'));
+        const meds = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setMedications(meds);
+      } catch (error) {
+        console.error('Error fetching medications:', error);
+      }
+    };
+  
+    fetchMedications();
+  
+    // Set up real-time listener for medication updates
+    const unsubscribe = onSnapshot(collection(db, 'medications'), (snapshot) => {
+      const updatedMeds = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMedications(updatedMeds);
+    });
+  
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -247,7 +276,16 @@ const Dashboard = () => {
             Welcome, {user.displayName || user.email}
           </Typography>
           <IconButton color="inherit">
-            <Notifications />
+          <NotificationSystem 
+            medications={medications}
+            cycleData={{
+              nextPeriod: {
+                start: userData.nextPeriod.start,
+                end: userData.nextPeriod.end
+              }
+            }}
+          />
+            {/* <NotificationSystem activeTab={activeTab} medications={medications} /> */}
           </IconButton>
           <IconButton color="inherit" onClick={handleLogout}>
             <ExitToApp />
@@ -386,6 +424,7 @@ const Dashboard = () => {
           </Paper>
         </Container>
       </Box>
+      <ToastContainer />
     </Box>
   );
 };
