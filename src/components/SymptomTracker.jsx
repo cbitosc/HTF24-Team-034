@@ -1,6 +1,5 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
-import { format, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, subDays } from 'date-fns';
+import { format } from 'date-fns';
 import { db, auth } from '../firebase';
 import { 
   collection, 
@@ -82,38 +81,6 @@ const themeColors = {
   hover: '#be185d',
 };
 
-// Generate dummy data for the past 3 months with daily entries
-const generateDummyData = () => {
-  const today = new Date(2024, 9, 27); // October 27, 2024
-  const threeMonthsAgo = subMonths(today, 3);
-  const daysInterval = eachDayOfInterval({ start: threeMonthsAgo, end: subDays(today, 1) });
-  
-  const generateNote = (symptoms, mood) => {
-    const intensityDescriptor = symptoms[0].intensity > 3 ? "severe" : "mild";
-    const timeOfDay = ["morning", "afternoon", "evening"][Math.floor(Math.random() * 3)];
-    return `Experiencing ${intensityDescriptor} ${symptoms[0].name.toLowerCase()} in the ${timeOfDay}. Overall feeling ${mood.toLowerCase()}.`;
-  };
-
-  return daysInterval.map(date => {
-    const dailySymptoms = Array(Math.floor(Math.random() * 4) + 1).fill(null).map(() => ({
-      name: DEFAULT_SYMPTOMS[Math.floor(Math.random() * DEFAULT_SYMPTOMS.length)],
-      intensity: Math.floor(Math.random() * 5) + 1
-    }));
-    const dailyMood = DEFAULT_MOODS[Math.floor(Math.random() * DEFAULT_MOODS.length)];
-
-    return {
-      id: `dummy-${format(date, 'yyyy-MM-dd')}`,
-      date: format(date, 'MMM dd'),
-      fullDate: date,
-      timestamp: Timestamp.fromDate(date),
-      symptoms: dailySymptoms,
-      mood: dailyMood,
-      notes: generateNote(dailySymptoms, dailyMood),
-      userId: auth.currentUser?.uid || 'dummy-user'
-    };
-  });
-};
-
 const SymptomTracker = () => {
   const [symptoms, setSymptoms] = useState([]);
   const [selectedSymptom, setSelectedSymptom] = useState("");
@@ -146,12 +113,23 @@ const SymptomTracker = () => {
         return;
       }
 
-      // Generate dummy data for past 3 months
-      const dummyData = generateDummyData();
-      
+      const userId = auth.currentUser.uid;
+      const q = query(
+        collection(db, 'symptomLogs'),
+        where('userId', '==', userId),
+        orderBy('timestamp', 'desc')
+      );
+
+      const querySnapshot = await getDocs(q);
+      const data = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        date: doc.data().timestamp ? format(doc.data().timestamp.toDate(), 'MMM dd') : 'No date'
+      }));
+
       // Group data by month
-      const groupedData = dummyData.reduce((acc, entry) => {
-        const monthKey = format(entry.fullDate, 'yyyy-MM');
+      const groupedData = data.reduce((acc, entry) => {
+        const monthKey = format(entry.timestamp.toDate(), 'yyyy-MM');
         if (!acc[monthKey]) {
           acc[monthKey] = [];
         }
@@ -168,7 +146,7 @@ const SymptomTracker = () => {
         }));
 
       setMonthlyData(monthsArray);
-      setHistoricalData(dummyData);
+      setHistoricalData(data);
       setIsLoading(false);
     } catch (error) {
       console.error('Error fetching symptom history:', error);
@@ -223,22 +201,19 @@ const SymptomTracker = () => {
     if (!entryToDelete) return;
 
     try {
-      // Only attempt to delete from Firestore if it's not a dummy entry
-      if (!entryToDelete.id.startsWith('dummy-')) {
-        const docRef = doc(db, 'symptomLogs', entryToDelete.id);
-        await deleteDoc(docRef);
-      }
-      
+      const docRef = doc(db, 'symptomLogs', entryToDelete.id);
+      await deleteDoc(docRef);
+
       // Update both historicalData and monthlyData
       const updatedHistorical = historicalData.filter(entry => entry.id !== entryToDelete.id);
       setHistoricalData(updatedHistorical);
-      
+
       const updatedMonthly = monthlyData.map(month => ({
         ...month,
         data: month.data.filter(entry => entry.id !== entryToDelete.id)
       }));
       setMonthlyData(updatedMonthly);
-      
+
       setDeleteDialogOpen(false);
       setEntryToDelete(null);
     } catch (error) {
@@ -253,39 +228,44 @@ const SymptomTracker = () => {
     }
 
     try {
-      const today = new Date(2024, 9, 27); // October 27, 2024
+      const userId = auth.currentUser.uid;
       const newEntry = {
-        userId: auth.currentUser.uid,
+        userId,
         symptoms,
         mood,
         notes,
-        timestamp: Timestamp.fromDate(today),
-        date: format(today, 'MMM dd'),
-        fullDate: today,
-        id: `dummy-${format(today, 'yyyy-MM-dd')}-${Date.now()}`
+        timestamp: serverTimestamp()
       };
 
+      const docRef = await addDoc(collection(db, 'symptomLogs'), newEntry);
+
+      // Update state
+      const updatedEntry = {
+        ...newEntry,
+        id: docRef.id,
+        date: format(new Date(), 'MMM dd')
+      };
+
+      setHistoricalData([updatedEntry, ...historicalData]);
+
       // Update monthlyData
-      const monthKey = format(today, 'yyyy-MM');
+      const monthKey = format(new Date(), 'yyyy-MM');
       const updatedMonthly = monthlyData.map(month => {
         if (month.month === monthKey) {
           return {
             ...month,
-            data: [newEntry, ...month.data]
+            data: [updatedEntry, ...month.data]
           };
         }
         return month;
       });
 
-      // Update state
       setMonthlyData(updatedMonthly);
-      setHistoricalData([newEntry, ...historicalData]);
-      
+
       // Reset form
       setSymptoms([]);
       setMood("");
       setNotes("");
-      
     } catch (error) {
       console.error('Error saving symptoms:', error);
     }
