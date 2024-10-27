@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars */ //ji
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { 
   Paper, Grid, Typography, Button, Box, Chip,
@@ -123,6 +123,14 @@ const CycleCalendar = ({ onDateSelect }) => {
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const startingDayIndex = firstDayOfMonth.getDay();
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+
+  // Remove period start date
+  const handleRemovePeriodStart = () => {
+    setCycleData(prev => ({
+      ...prev,
+      lastPeriod: null
+    }));
+  };
 
   return (
     <Box sx={{ p: 2 }}>
@@ -271,6 +279,18 @@ const CycleCalendar = ({ onDateSelect }) => {
                     startIcon={<CalendarToday />}
                   >
                     Mark as Period Start
+                  </Button>
+                )}
+
+                {/* Remove Period Start Option */}
+                {cycleData.lastPeriod && (
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    onClick={handleRemovePeriodStart}
+                    startIcon={<CalendarToday />}
+                  >
+                    Remove Period Start
                   </Button>
                 )}
               </Stack>
