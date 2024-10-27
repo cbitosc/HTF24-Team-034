@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars */ 
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import {
   Container,
@@ -42,22 +42,22 @@ import { db, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from '../f
 const periodTrackingTheme = createTheme({
   palette: {
     primary: {
-      main: '#4CAF50', // Green
-      light: '#C8E6C9', // Light Green
-      contrastText: '#FFFFFF', // White
+      main: '#4CAF50',
+      light: '#C8E6C9',
+      contrastText: '#FFFFFF',
     },
     secondary: {
-      main: '#388E3C', // Dark Green
-      light: '#66BB6A', // Medium Green
-      contrastText: '#FFFFFF', // White
+      main: '#388E3C',
+      light: '#66BB6A',
+      contrastText: '#FFFFFF',
     },
     background: {
-      default: '#E8F5E9', // Very Light Green
-      paper: '#FFFFFF', // White
+      default: '#E8F5E9',
+      paper: '#FFFFFF',
     },
     text: {
-      primary: '#333333', // Dark Gray
-      secondary: '#757575', // Medium Gray
+      primary: '#333333',
+      secondary: '#757575',
     },
   },
   typography: {
@@ -71,7 +71,7 @@ const periodTrackingTheme = createTheme({
   },
 });
 
-const HealthTracker = () => {
+const HealthAndMedication = () => {
   const [medications, setMedications] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentMed, setCurrentMed] = useState(null);
@@ -190,28 +190,16 @@ const HealthTracker = () => {
         setSnackbarMessage(`Reminder: Take ${nextMed.name} at ${nextMed.time}`);
         setOpenSnackbar(true);
       }
-    }, 30000); // Check every 30 seconds for testing
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [medications]);
 
-  useEffect(() => {
-    // Add a default medication for testing
-    const defaultMed = {
-      name: 'Test Medication',
-      dosage: '1 tablet',
-      frequency: 'Daily',
-      time: '12:00',
-      notes: 'This is a test medication',
-      completed: false,
-    };
-    addDoc(collection(db, 'medications'), defaultMed);
-  }, []);
-
   return (
     <ThemeProvider theme={periodTrackingTheme}>
       <Container maxWidth="md" sx={{ py: 4 }}>
-        {/* Enhanced Reminder Banner */}
+        {/* Rest of the component remains exactly the same */}
+        {/* Reminder Banner */}
         <Fade in={true} timeout={1000}>
           <Paper 
             elevation={3}
@@ -239,7 +227,7 @@ const HealthTracker = () => {
           </Paper>
         </Fade>
 
-        {/* Enhanced Medications List */}
+        {/* Medications List */}
         <Fade in={true} timeout={1000}>
           <Paper 
             elevation={3}
@@ -345,14 +333,14 @@ const HealthTracker = () => {
                   color="text.secondary"
                   sx={{ textAlign: 'center', py: 4 }}
                 >
-                  No medications added yet. Click the &quot;Add New&quot; button to get started.
+                  No medications added yet. Click the "Add New" button to get started.
                 </Typography>
               )}
             </List>
           </Paper>
         </Fade>
 
-        {/* Enhanced Add/Edit Dialog */}
+        {/* Add/Edit Dialog */}
         <Dialog 
           open={openDialog} 
           onClose={handleCloseDialog} 
@@ -451,4 +439,4 @@ const HealthTracker = () => {
   );
 };
 
-export default HealthTracker;
+export default HealthAndMedication;
