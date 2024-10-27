@@ -1,5 +1,4 @@
-/* eslint-disable no-unused-vars */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -27,6 +26,7 @@ import {
   Stack,
   createTheme,
   ThemeProvider,
+  Snackbar,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -36,6 +36,7 @@ import {
   AccessTime as TimeIcon,
   Event as EventIcon,
 } from '@mui/icons-material';
+import { db, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from '../firebase';
 
 const periodTrackingTheme = createTheme({
   palette: {
@@ -80,6 +81,8 @@ const HealthTracker = () => {
     time: '',
     notes: ''
   });
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
@@ -110,27 +113,48 @@ const HealthTracker = () => {
     resetForm();
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.dosage || !formData.time) return;
 
-    if (currentMed) {
-      setMedications(medications.map(med =>
-        med.id === currentMed.id ? { ...formData, id: currentMed.id } : med
-      ));
-    } else {
-      setMedications([...medications, { ...formData, id: Date.now(), completed: false }]);
+    try {
+      if (currentMed) {
+        await updateDoc(doc(db, 'medications', currentMed.id), formData);
+        setMedications(medications.map(med =>
+          med.id === currentMed.id ? { ...formData, id: currentMed.id } : med
+        ));
+      } else {
+        const docRef = await addDoc(collection(db, 'medications'), { ...formData, completed: false });
+        setMedications([...medications, { ...formData, id: docRef.id, completed: false }]);
+      }
+      handleCloseDialog();
+      setSnackbarMessage(currentMed ? 'Medication updated successfully!' : 'Medication added successfully!');
+      setOpenSnackbar(true);
+    } catch (error) {
+      console.error('Error saving medication:', error);
     }
-    handleCloseDialog();
   };
 
-  const handleDelete = (id) => {
-    setMedications(medications.filter(med => med.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'medications', id));
+      setMedications(medications.filter(med => med.id !== id));
+      setSnackbarMessage('Medication deleted successfully!');
+      setOpenSnackbar(true);
+    } catch (error) {
+      console.error('Error deleting medication:', error);
+    }
   };
 
-  const toggleComplete = (id) => {
-    setMedications(medications.map(med =>
-      med.id === id ? { ...med, completed: !med.completed } : med
-    ));
+  const toggleComplete = async (id) => {
+    const med = medications.find(med => med.id === id);
+    try {
+      await updateDoc(doc(db, 'medications', id), { completed: !med.completed });
+      setMedications(medications.map(med =>
+        med.id === id ? { ...med, completed: !med.completed } : med
+      ));
+    } catch (error) {
+      console.error('Error toggling completion:', error);
+    }
   };
 
   const getNextMedication = () => {
@@ -150,6 +174,38 @@ const HealthTracker = () => {
         return next;
       }, null)?.med;
   };
+
+  useEffect(() => {
+    const fetchMedications = async () => {
+      const querySnapshot = await getDocs(collection(db, 'medications'));
+      const meds = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMedications(meds);
+    };
+    fetchMedications();
+
+    const interval = setInterval(() => {
+      const nextMed = getNextMedication();
+      if (nextMed) {
+        setSnackbarMessage(`Reminder: Take ${nextMed.name} at ${nextMed.time}`);
+        setOpenSnackbar(true);
+      }
+    }, 30000); // Check every 30 seconds for testing
+
+    return () => clearInterval(interval);
+  }, [medications]);
+
+  useEffect(() => {
+    // Add a default medication for testing
+    const defaultMed = {
+      name: 'Test Medication',
+      dosage: '1 tablet',
+      frequency: 'Daily',
+      time: '12:00',
+      notes: 'This is a test medication',
+      completed: false,
+    };
+    addDoc(collection(db, 'medications'), defaultMed);
+  }, []);
 
   return (
     <ThemeProvider theme={periodTrackingTheme}>
@@ -381,6 +437,14 @@ const HealthTracker = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Snackbar for Notifications */}
+        <Snackbar
+          open={openSnackbar}
+          autoHideDuration={6000}
+          onClose={() => setOpenSnackbar(false)}
+          message={snackbarMessage}
+        />
       </Container>
     </ThemeProvider>
   );
