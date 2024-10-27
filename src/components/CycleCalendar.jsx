@@ -12,7 +12,7 @@ import {
   Favorite, Water, Mood, LocalHospital
 } from '@mui/icons-material';
 
-const CycleCalendar = () => {
+const CycleCalendar = ({ onDateSelect }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [cycleData, setCycleData] = useState({
@@ -124,6 +124,14 @@ const CycleCalendar = () => {
   const startingDayIndex = firstDayOfMonth.getDay();
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
 
+  // Remove period start date
+  const handleRemovePeriodStart = () => {
+    setCycleData(prev => ({
+      ...prev,
+      lastPeriod: null
+    }));
+  };
+
   return (
     <Box sx={{ p: 2 }}>
       <Card>
@@ -186,6 +194,7 @@ const CycleCalendar = () => {
                       setSelectedSymptoms(dayData?.symptoms || []);
                       setFlowLevel(dayData?.flow || 'none');
                       setOpenDialog(true);
+                      onDateSelect(date);
                     }}
                     sx={getCellStyle(day)}
                   >
@@ -270,6 +279,18 @@ const CycleCalendar = () => {
                     startIcon={<CalendarToday />}
                   >
                     Mark as Period Start
+                  </Button>
+                )}
+
+                {/* Remove Period Start Option */}
+                {cycleData.lastPeriod && (
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    onClick={handleRemovePeriodStart}
+                    startIcon={<CalendarToday />}
+                  >
+                    Remove Period Start
                   </Button>
                 )}
               </Stack>

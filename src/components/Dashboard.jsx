@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -29,6 +30,7 @@ const Dashboard = () => {
     mood: [],
     symptoms: []
   });
+  const [selectedDate, setSelectedDate] = useState(null);
   const navigate = useNavigate();
 
   const calculateNextPeriodWindow = (lastPeriodStart, lastPeriodEnd, cycleLength) => {
@@ -78,11 +80,12 @@ const Dashboard = () => {
 
   const userData = {
     lastPeriod: {
-      start: "2024-10-18",
-      end: "2024-10-23"
+      start: selectedDate ? formatDate(selectedDate) : null,
+      end: selectedDate ? formatDate(new Date(selectedDate.getTime() + 5 * 24 * 60 * 60 * 1000)) : null
     },
     cycleLength: 28,
     get nextPeriod() {
+      if (!this.lastPeriod.start) return { start: null, end: null };
       const nextWindow = calculateNextPeriodWindow(
         this.lastPeriod.start,
         this.lastPeriod.end,
@@ -94,6 +97,7 @@ const Dashboard = () => {
       };
     },
     get currentPhase() {
+      if (!this.lastPeriod.start) return null;
       return determinePhase(
         this.lastPeriod.start,
         this.lastPeriod.end,
@@ -115,7 +119,7 @@ const Dashboard = () => {
     const script1 = document.createElement('script');
     script1.innerHTML = `
       window.embeddedChatbotConfig = {
-        chatbotId: "X0HwzCwDpqWFF42C0g_tx",
+        chatbotId: "YXBGu6pquBVVcIuQ42_kU",
         domain: "www.chatbase.co"
       }
     `;
@@ -123,7 +127,7 @@ const Dashboard = () => {
 
     const script2 = document.createElement('script');
     script2.src = "https://www.chatbase.co/embed.min.js";
-    script2.setAttribute('chatbotId', 'X0HwzCwDpqWFF42C0g_tx');
+    script2.setAttribute('chatbotId', 'YXBGu6pquBVVcIuQ42_kU');
     script2.setAttribute('domain', 'www.chatbase.co');
     script2.defer = true;
     document.body.appendChild(script2);
@@ -237,7 +241,7 @@ const Dashboard = () => {
         <Toolbar>
           <Favorite sx={{ mr: 2, color: 'pink' }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            CycleCare
+            Masika
           </Typography>
           <Typography variant="body1" sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
             Welcome, {user.displayName || user.email}
@@ -267,9 +271,9 @@ const Dashboard = () => {
                   <CalendarToday sx={{ mr: 2, color: 'pink' }} />
                   <div>
                     <Typography variant="body2" color="textSecondary">Next Period</Typography>
-                    <Typography variant="h6">{userData.nextPeriod.start}</Typography>
+                    <Typography variant="h6">{userData.nextPeriod.start || 'N/A'}</Typography>
                     <Typography variant="body2" color="textSecondary">
-                      to {userData.nextPeriod.end}
+                      to {userData.nextPeriod.end || 'N/A'}
                     </Typography>
                   </div>
                 </Box>
@@ -308,9 +312,9 @@ const Dashboard = () => {
                   <Water sx={{ mr: 2, color: 'blue' }} />
                   <div>
                     <Typography variant="body2" color="textSecondary">Last Period</Typography>
-                    <Typography variant="h6">{formatDate(userData.lastPeriod.start)}</Typography>
+                    <Typography variant="h6">{userData.lastPeriod.start || 'N/A'}</Typography>
                     <Typography variant="body2" color="textSecondary">
-                      to {formatDate(userData.lastPeriod.end)}
+                      to {userData.lastPeriod.end || 'N/A'}
                     </Typography>
                   </div>
                 </Box>
@@ -323,14 +327,14 @@ const Dashboard = () => {
                 sx={{ 
                   p: 3, 
                   height: '100%',
-                  bgcolor: getPhaseColor(userData.currentPhase)
+                  bgcolor: userData.currentPhase ? getPhaseColor(userData.currentPhase) : '#ffffff'
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  {getPhaseIcon(userData.currentPhase)}
+                  {userData.currentPhase ? getPhaseIcon(userData.currentPhase) : <Mood />}
                   <Box sx={{ ml: 2 }}>
                     <Typography variant="body2" color="textSecondary">Current Phase</Typography>
-                    <Typography variant="h6">{userData.currentPhase}</Typography>
+                    <Typography variant="h6">{userData.currentPhase || 'N/A'}</Typography>
                   </Box>
                 </Box>
               </Paper>
@@ -374,7 +378,7 @@ const Dashboard = () => {
               p: 3,
               bgcolor: 'background.paper'
             }}>
-              {activeTab === 0 && <CycleCalendar />}
+              {activeTab === 0 && <CycleCalendar onDateSelect={setSelectedDate} />}
               {activeTab === 1 && <SymptomTracker />}
               {activeTab === 2 && <Insights />}
               {activeTab === 3 && <HealthAndMedication />}
