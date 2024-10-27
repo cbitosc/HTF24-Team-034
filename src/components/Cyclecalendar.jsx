@@ -12,7 +12,7 @@ import {
   Favorite, Water, Mood, LocalHospital
 } from '@mui/icons-material';
 
-const CycleCalendar = () => {
+const CycleCalendar = ({ onDateSelect }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [cycleData, setCycleData] = useState({
@@ -186,6 +186,7 @@ const CycleCalendar = () => {
                       setSelectedSymptoms(dayData?.symptoms || []);
                       setFlowLevel(dayData?.flow || 'none');
                       setOpenDialog(true);
+                      onDateSelect(date);
                     }}
                     sx={getCellStyle(day)}
                   >
