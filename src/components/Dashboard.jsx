@@ -1,30 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Container,
-  Grid,
-  Paper,
-  Tabs,
-  Tab,
-  IconButton,
-  Box,
+  AppBar, Toolbar, Typography, Button, Container, Grid, Paper,
+  Tabs, Tab, IconButton, Box, Badge, Chip, LinearProgress,
+  Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import {
-  CalendarToday,
-  AccessTime,
-  Notifications,
-  Favorite,
-  ExitToApp,
-  Water,
-  Mood,
-  Spa,
-  WbSunny,
-  Stars,
-  NightsStay,
+  CalendarToday, AccessTime, Notifications, Favorite, ExitToApp,
+  Water, Mood, Spa, WbSunny, Stars, NightsStay, LocalHospital,
+  TipsAndUpdates, FitnessCenter, Restaurant, Psychology
 } from '@mui/icons-material';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
@@ -37,9 +21,16 @@ import HealthAndMedication from './HealthandMedication';
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [user, setUser] = useState(null);
+  const [showTips, setShowTips] = useState(false);
+  const [healthScore, setHealthScore] = useState(85);
+  const [dailyInsights, setDailyInsights] = useState({
+    nutrition: [],
+    exercise: [],
+    mood: [],
+    symptoms: []
+  });
   const navigate = useNavigate();
 
-  // Existing functions remain the same
   const calculateNextPeriodWindow = (lastPeriodStart, lastPeriodEnd, cycleLength) => {
     const daysBetween = Math.round((new Date(lastPeriodEnd) - new Date(lastPeriodStart)) / (1000 * 60 * 60 * 24));
     const nextPeriodStart = new Date(lastPeriodStart);
@@ -124,7 +115,7 @@ const Dashboard = () => {
     const script1 = document.createElement('script');
     script1.innerHTML = `
       window.embeddedChatbotConfig = {
-        chatbotId: "YXBGu6pquBVVcIuQ42_kU",
+        chatbotId: "X0HwzCwDpqWFF42C0g_tx",
         domain: "www.chatbase.co"
       }
     `;
@@ -132,7 +123,7 @@ const Dashboard = () => {
 
     const script2 = document.createElement('script');
     script2.src = "https://www.chatbase.co/embed.min.js";
-    script2.setAttribute('chatbotId', 'YXBGu6pquBVVcIuQ42_kU');
+    script2.setAttribute('chatbotId', 'X0HwzCwDpqWFF42C0g_tx');
     script2.setAttribute('domain', 'www.chatbase.co');
     script2.defer = true;
     document.body.appendChild(script2);
@@ -164,21 +155,84 @@ const Dashboard = () => {
     return colors[phase] || '#ffffff';
   };
 
+  const getPhaseRecommendations = (phase) => {
+    const recommendations = {
+      Menstrual: {
+        nutrition: ['Iron-rich foods', 'Dark chocolate', 'Warm beverages'],
+        exercise: ['Light yoga', 'Walking', 'Stretching'],
+        selfCare: ['Warm bath', 'Rest', 'Meditation']
+      },
+      Follicular: {
+        nutrition: ['Leafy greens', 'Fresh fruits', 'Lean proteins'],
+        exercise: ['High-intensity workouts', 'Strength training', 'Dancing'],
+        selfCare: ['New projects', 'Social activities', 'Learning']
+      },
+      Ovulation: {
+        nutrition: ['Antioxidant-rich foods', 'Healthy fats', 'Fermented foods'],
+        exercise: ['Cardio', 'Group classes', 'Sports'],
+        selfCare: ['Mindfulness', 'Creative activities', 'Dating']
+      },
+      Luteal: {
+        nutrition: ['Complex carbs', 'Magnesium-rich foods', 'Protein'],
+        exercise: ['Swimming', 'Pilates', 'Light cardio'],
+        selfCare: ['Journaling', 'Gentle skincare', 'Early bedtime']
+      }
+    };
+    return recommendations[phase] || recommendations.Follicular;
+  };
+
+  const PhaseRecommendations = ({ phase }) => {
+    const recommendations = getPhaseRecommendations(phase);
+    
+    return (
+      <Dialog open={showTips} onClose={() => setShowTips(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box display="flex" alignItems="center">
+            {getPhaseIcon(phase)}
+            <Typography variant="h6" sx={{ ml: 1 }}>
+              {phase} Phase Recommendations
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" color="primary" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Restaurant sx={{ mr: 1 }} /> Nutrition Tips
+              </Typography>
+              {recommendations.nutrition.map((tip, index) => (
+                <Chip key={index} label={tip} sx={{ m: 0.5 }} />
+              ))}
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" color="primary" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <FitnessCenter sx={{ mr: 1 }} /> Exercise Recommendations
+              </Typography>
+              {recommendations.exercise.map((tip, index) => (
+                <Chip key={index} label={tip} sx={{ m: 0.5 }} />
+              ))}
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" color="primary" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Psychology sx={{ mr: 1 }} /> Self-Care Activities
+              </Typography>
+              {recommendations.selfCare.map((tip, index) => (
+                <Chip key={index} label={tip} sx={{ m: 0.5 }} />
+              ))}
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowTips(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
   if (!user) return null;
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-        height: '100vh',
-        overflow: 'hidden',
-        bgcolor: 'background.default',
-        position: 'relative' // Added for chatbot positioning
-      }}
-    >
-      {/* Navigation Bar */}
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', overflow: 'hidden' }}>
       <AppBar position="sticky" elevation={1}>
         <Toolbar>
           <Favorite sx={{ mr: 2, color: 'pink' }} />
@@ -197,26 +251,8 @@ const Dashboard = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Main Content Area */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          overflowY: 'auto',
-          height: 'calc(100vh - 64px)',
-          bgcolor: '#faf5ff',
-        }}
-      >
-        <Container 
-          maxWidth="lg" 
-          sx={{ 
-            py: 4,
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          {/* Quick Stats */}
+      <Box component="main" sx={{ flexGrow: 1, overflowY: 'auto', bgcolor: '#faf5ff' }}>
+        <Container maxWidth="lg" sx={{ py: 4 }}>
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} sm={6} md={3}>
               <Paper 
@@ -299,18 +335,22 @@ const Dashboard = () => {
                 </Box>
               </Paper>
             </Grid>
+
+            <Grid item xs={12}>
+              <Button
+                variant="outlined"
+                startIcon={<TipsAndUpdates />}
+                onClick={() => setShowTips(true)}
+                sx={{ float: 'right' }}
+              >
+                View Phase Recommendations
+              </Button>
+            </Grid>
           </Grid>
 
-          {/* Tab Navigation */}
-          <Paper 
-            elevation={2}
-            sx={{ 
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden'
-            }}
-          >
+          <PhaseRecommendations phase={userData.currentPhase} />
+
+          <Paper elevation={2} sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <Tabs
               value={activeTab}
               onChange={(e, newValue) => setActiveTab(newValue)}
@@ -328,7 +368,6 @@ const Dashboard = () => {
               <Tab label="Health and Medication" />
             </Tabs>
 
-            {/* Tab Content */}
             <Box sx={{
               flexGrow: 1,
               overflowY: 'auto',
