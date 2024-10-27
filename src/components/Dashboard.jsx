@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -22,10 +21,10 @@ import {
   ExitToApp,
   Water,
   Mood,
-  Spa, // For Menstrual phase
-  WbSunny, // For Follicular phase
-  Stars, // For Ovulation phase
-  NightsStay, // For Luteal phase
+  Spa,
+  WbSunny,
+  Stars,
+  NightsStay,
 } from '@mui/icons-material';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
@@ -40,7 +39,7 @@ const Dashboard = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
-  // Function to calculate next period window
+  // Existing functions remain the same
   const calculateNextPeriodWindow = (lastPeriodStart, lastPeriodEnd, cycleLength) => {
     const daysBetween = Math.round((new Date(lastPeriodEnd) - new Date(lastPeriodStart)) / (1000 * 60 * 60 * 24));
     const nextPeriodStart = new Date(lastPeriodStart);
@@ -54,7 +53,6 @@ const Dashboard = () => {
     };
   };
 
-  // Function to determine current phase
   const determinePhase = (lastPeriodStart, lastPeriodEnd, cycleLength) => {
     const today = new Date();
     const lastStart = new Date(lastPeriodStart);
@@ -69,7 +67,6 @@ const Dashboard = () => {
     return "Luteal";
   };
 
-  // Format date for display
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('en-US', {
       month: 'long',
@@ -78,7 +75,6 @@ const Dashboard = () => {
     });
   };
 
-  // Get phase icon
   const getPhaseIcon = (phase) => {
     const icons = {
       Menstrual: <Spa sx={{ color: '#d32f2f' }} />,
@@ -89,7 +85,6 @@ const Dashboard = () => {
     return icons[phase] || <Mood />;
   };
 
-  // Mock user data with calculated values
   const userData = {
     lastPeriod: {
       start: "2024-10-18",
@@ -125,7 +120,29 @@ const Dashboard = () => {
       }
     });
 
-    return unsubscribe;
+    // Add chatbot script when component mounts
+    const script1 = document.createElement('script');
+    script1.innerHTML = `
+      window.embeddedChatbotConfig = {
+        chatbotId: "X0HwzCwDpqWFF42C0g_tx",
+        domain: "www.chatbase.co"
+      }
+    `;
+    document.body.appendChild(script1);
+
+    const script2 = document.createElement('script');
+    script2.src = "https://www.chatbase.co/embed.min.js";
+    script2.setAttribute('chatbotId', 'X0HwzCwDpqWFF42C0g_tx');
+    script2.setAttribute('domain', 'www.chatbase.co');
+    script2.defer = true;
+    document.body.appendChild(script2);
+
+    return () => {
+      unsubscribe();
+      // Clean up scripts when component unmounts
+      document.body.removeChild(script1);
+      document.body.removeChild(script2);
+    };
   }, [navigate]);
 
   const handleLogout = async () => {
@@ -137,7 +154,6 @@ const Dashboard = () => {
     }
   };
 
-  // Get phase color
   const getPhaseColor = (phase) => {
     const colors = {
       Menstrual: '#ffebee',
@@ -158,7 +174,8 @@ const Dashboard = () => {
         minHeight: '100vh',
         height: '100vh',
         overflow: 'hidden',
-        bgcolor: 'background.default'
+        bgcolor: 'background.default',
+        position: 'relative' // Added for chatbot positioning
       }}
     >
       {/* Navigation Bar */}
