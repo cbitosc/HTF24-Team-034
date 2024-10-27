@@ -32,7 +32,7 @@ const Login = () => {
         <div className="flex items-center justify-center mb-8">
           <Heart className="h-8 w-8 text-pink-500" />
           <span className="ml-2 text-2xl font-semibold text-gray-800">
-            CycleCare
+            Masika
           </span>
         </div>
         

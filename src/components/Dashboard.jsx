@@ -241,7 +241,7 @@ const Dashboard = () => {
         <Toolbar>
           <Favorite sx={{ mr: 2, color: 'pink' }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            CycleCare
+            Masika
           </Typography>
           <Typography variant="body1" sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
             Welcome, {user.displayName || user.email}
