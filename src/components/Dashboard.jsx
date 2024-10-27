@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -115,7 +116,7 @@ const Dashboard = () => {
     const script1 = document.createElement('script');
     script1.innerHTML = `
       window.embeddedChatbotConfig = {
-        chatbotId: "X0HwzCwDpqWFF42C0g_tx",
+        chatbotId: "YXBGu6pquBVVcIuQ42_kU",
         domain: "www.chatbase.co"
       }
     `;
@@ -123,7 +124,7 @@ const Dashboard = () => {
 
     const script2 = document.createElement('script');
     script2.src = "https://www.chatbase.co/embed.min.js";
-    script2.setAttribute('chatbotId', 'X0HwzCwDpqWFF42C0g_tx');
+    script2.setAttribute('chatbotId', 'YXBGu6pquBVVcIuQ42_kU');
     script2.setAttribute('domain', 'www.chatbase.co');
     script2.defer = true;
     document.body.appendChild(script2);
